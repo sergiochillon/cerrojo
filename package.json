@@ -1,0 +1,22 @@
+{
+  "name": "cerrojo",
+  "version": "0.1.0",
+  "description": "Auditoría de seguridad para apps hechas con IA sobre Supabase: comprueba si el aislamiento entre usuarios funciona, no solo si RLS existe.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "bin": {
+    "cerrojo": "bin/cerrojo.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "demo": "node demo/demo.js",
+    "demo:servidor": "node demo/servidor.js"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0"
+  }
+}

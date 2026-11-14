@@ -30,6 +30,9 @@ export async function auditarWeb(urlApp, op = {}) {
   avisar(`Descargando ${base.href}`);
   const pagina = await cliente.pedir(base.href);
   if (!pagina.ok) throw new Error(`No se pudo abrir ${base.href}: ${pagina.error ?? `HTTP ${pagina.estado}`}`);
+  // La página puede haber redirigido; a partir de aquí manda el origen final, ya validado.
+  let bloqueadas = 0;
+  let recortadas = 0;
   const origen = new URL(pagina.url).origin;
 
   // 1. Código público: HTML + JavaScript del mismo origen.
@@ -51,6 +54,8 @@ export async function auditarWeb(urlApp, op = {}) {
   for (let i = 0; i < pendientes.length && i < maxArchivos; i++) {
     const url = pendientes[i];
     const r = await cliente.pedir(url, { maxBytes: 8_000_000 });
+    if (r.error?.startsWith('destino_bloqueado')) bloqueadas++;
+    if (r.truncada) recortadas++;
     if (!r.ok || /^\s*<!doctype html/i.test(r.texto)) continue;
     const nombre = new URL(url).pathname;
     const e = extraer(r.texto, nombre);
@@ -60,6 +65,8 @@ export async function auditarWeb(urlApp, op = {}) {
     for (const m of r.texto.matchAll(/["'`]((?:\.{0,2}\/)?(?:assets\/)?[A-Za-z0-9._-]+\.js)["'`]/g)) anotar(m[1], url);
   }
   if (pendientes.length > maxArchivos) notas.push({ es: `Se analizaron ${maxArchivos} de ${pendientes.length} archivos JavaScript.`, en: `Analysed ${maxArchivos} of ${pendientes.length} JavaScript files.` });
+  if (bloqueadas) notas.push({ es: `${bloqueadas} archivo(s) no se descargaron porque redirigían a una dirección local, privada o interna.`, en: `${bloqueadas} file(s) were not downloaded because they redirected to a local, private or internal address.` });
+  if (recortadas) notas.push({ es: `${recortadas} archivo(s) superaban 8 MB y solo se analizó su comienzo.`, en: `${recortadas} file(s) exceeded 8 MB and only their beginning was analysed.` });
   const visto = fusionar(extraidos);
   avisar(`Analizados ${extraidos.length - 1} archivos JavaScript`);
 
@@ -114,6 +121,13 @@ export async function auditarWeb(urlApp, op = {}) {
     });
   } else {
     avisar(`Proyecto Supabase: ${supabaseUrl}`);
+    // La URL del backend sale del código de la página, que es un dato no fiable: se valida
+    // igual que cualquier otro destino antes de enviarle nada.
+    try {
+      await cliente.validarDestino(new URL(supabaseUrl));
+    } catch (e) {
+      throw new Error(`El backend que declara la app (${supabaseUrl}) no es un destino admisible: ${e.message}`);
+    }
     const sb = new Supabase(cliente, supabaseUrl, candidata.clave);
     if (candidata.tipo === 'anon-jwt') hallazgos.push(hallazgo('S-CLAVE-HEREDADA', 'info', supabaseUrl));
 
@@ -145,6 +159,12 @@ export async function auditarWeb(urlApp, op = {}) {
         const categorias = categoriasSensibles([t, ...columnas]);
         hallazgos.push(hallazgo('S-TABLA-LEGIBLE-ANON', gravedadPorCategorias(categorias), `public.${t}`, { tabla: t, filas: r.total ?? r.filas.length, columnas, categorias }));
       }
+    }
+    if (superficie.tablas.length) {
+      notas.push({
+        es: 'Para saber si cada tabla es legible sin sesión se pidió una fila por tabla con la clave pública. Los valores recibidos se descartaron; en el informe solo constan recuentos y nombres de columna.',
+        en: 'To check whether each table is readable without a session, one row per table was requested with the public key. Received values were discarded; the report only holds counts and column names.',
+      });
     }
     if (claveInvalida) {
       notas.push({ es: 'El backend rechazó la clave pública detectada; no se pudieron comprobar las tablas.', en: 'The backend rejected the detected public key; tables could not be checked.' });

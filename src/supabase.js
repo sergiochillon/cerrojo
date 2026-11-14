@@ -1,5 +1,6 @@
 // Llamadas a las APIs públicas de un proyecto Supabase (PostgREST, Auth, Storage).
-// Solo lectura, salvo la prueba opcional de escritura del módulo de aislamiento.
+// Solo lectura, salvo `actualizarSinCambios`, que es una escritura real y el módulo de
+// aislamiento únicamente invoca contra una base local declarada desechable.
 
 import { json } from './http.js';
 import { esIdentificador } from './util.js';
@@ -80,8 +81,11 @@ export class Supabase {
   }
 
   /**
-   * Actualización que no cambia ningún valor: asigna a la columna dueño el valor que ya tiene,
-   * sobre las filas de `idDueno`. Si devuelve filas, quien llama puede modificar filas ajenas.
+   * UPDATE real que asigna a la columna dueño el valor que ya tiene, sobre las filas de
+   * `idDueno`. Si devuelve filas, quien llama puede modificar filas ajenas.
+   * OJO: aunque el valor no cambie, la base de datos ejecuta la escritura: se disparan los
+   * triggers BEFORE/AFTER UPDATE (updated_at, auditoría, webhooks…) y se emiten eventos.
+   * No usar contra datos reales.
    */
   async actualizarSinCambios(tabla, columna, idDueno, token) {
     if (!esIdentificador(tabla) || !esIdentificador(columna)) return { estado: 'error', filas: 0 };

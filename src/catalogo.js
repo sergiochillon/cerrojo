@@ -88,8 +88,8 @@ export const CATALOGO = {
       const cols = d.columnas?.length ? lista(d.columnas) : '—';
       const cats = d.categorias?.length ? lista(d.categorias) : L === 'es' ? 'ninguna detectada por nombre' : 'none detected by name';
       return L === 'es'
-        ? `${d.filas ?? '≥1'} fila(s) visibles sin sesión. Columnas: ${cols}. Categorías sensibles por nombre de columna: ${cats}. No se ha guardado ningún valor.`
-        : `${d.filas ?? '≥1'} row(s) visible without a session. Columns: ${cols}. Sensitive categories by column name: ${cats}. No values were stored.`;
+        ? `${d.filas ?? '≥1'} fila(s) visibles sin sesión. Columnas: ${cols}. Categorías sensibles por nombre de columna: ${cats}. Para comprobarlo se descargó una fila; sus valores no se han guardado.`
+        : `${d.filas ?? '≥1'} row(s) visible without a session. Columns: ${cols}. Sensitive categories by column name: ${cats}. One row was downloaded to check this; its values were not stored.`;
     },
   },
   'S-ESQUEMA-PUBLICO': {
@@ -150,15 +150,15 @@ export const CATALOGO = {
           : `account ${x.quien} receives ${x.ajenas} row(s) it does not own (${x.delOtro} from the other test account)`,
       );
       return L === 'es'
-        ? `Columna dueño: ${d.columna}. Resultado: ${frases.join('; ')}. Columnas de la tabla: ${lista(d.columnas)}. No se ha guardado ningún valor.`
-        : `Owner column: ${d.columna}. Result: ${frases.join('; ')}. Table columns: ${lista(d.columnas)}. No values were stored.`;
+        ? `Columna dueño: ${d.columna}. Resultado: ${frases.join('; ')}. Columnas de la tabla: ${lista(d.columnas)}. Las filas se descargaron para compararlas; sus valores no se han guardado.`
+        : `Owner column: ${d.columna}. Result: ${frases.join('; ')}. Table columns: ${lista(d.columnas)}. Rows were downloaded for comparison; their values were not stored.`;
     },
   },
   'A-ESCRITURA-CRUZADA': {
     titulo: { es: 'Un usuario puede modificar filas de otros usuarios', en: 'A user can modify other users’ rows' },
     porque: {
-      es: 'Comprobado: una cuenta de prueba ejecutó con éxito una actualización (sin cambiar ningún valor) sobre filas de la otra. Un usuario puede alterar o sabotear datos ajenos.',
-      en: 'Verified: one test account successfully ran an update (changing no values) on the other’s rows. A user can tamper with other people’s data.',
+      es: 'Comprobado en una base local desechable: una cuenta de prueba ejecutó con éxito un UPDATE sobre filas de la otra. Un usuario puede alterar o sabotear datos ajenos.',
+      en: 'Verified on a disposable local database: one test account successfully ran an UPDATE on the other’s rows. A user can tamper with other people’s data.',
     },
     arreglo: {
       es: 'Limita update/delete al dueño:\ncreate policy "modificar lo propio" on public.{tabla} for update to authenticated using ((select auth.uid()) = {columna}) with check ((select auth.uid()) = {columna});',
@@ -167,8 +167,8 @@ export const CATALOGO = {
     detalle: (d, L) => {
       const frases = d.escrituras.map((x) => (L === 'es' ? `la cuenta ${x.quien} actualizó ${x.filas} fila(s) de la otra` : `account ${x.quien} updated ${x.filas} row(s) of the other`));
       return L === 'es'
-        ? `Columna dueño: ${d.columna}. Resultado: ${frases.join('; ')}. La actualización asignó a la columna el valor que ya tenía: no se alteró ningún dato.`
-        : `Owner column: ${d.columna}. Result: ${frases.join('; ')}. The update set the column to the value it already had: no data was altered.`;
+        ? `Columna dueño: ${d.columna}. Resultado: ${frases.join('; ')}. El UPDATE asignó a la columna el valor que ya tenía, pero es una escritura real: dispara triggers y puede haber cambiado columnas derivadas.`
+        : `Owner column: ${d.columna}. Result: ${frases.join('; ')}. The UPDATE set the column to its existing value, but it is a real write: it fires triggers and may have changed derived columns.`;
     },
   },
 

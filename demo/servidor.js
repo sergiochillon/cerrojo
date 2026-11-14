@@ -265,10 +265,15 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const demo = await iniciarDemo({ puerto: Number(process.env.PUERTO ?? 54321), corregida: process.argv.includes('--corregida') });
   process.stdout.write(
     `App ficticia vulnerable en ${demo.url}  (Ctrl+C para parar)\n\n` +
-      `Pruébala en otra terminal:\n` +
-      `  node bin/cerrojo.js web ${demo.url} --autorizo --salida salida/web.json\n` +
+      `Pruébala en otra terminal (es tu propia máquina, de ahí --permitir-local):\n` +
+      `  node bin/cerrojo.js web ${demo.url} --autorizo --permitir-local --salida salida/web.json\n` +
       `  CERROJO_A_CORREO=${USUARIOS.A.correo} CERROJO_A_CONTRASENA=${USUARIOS.A.contrasena} \\\n` +
       `  CERROJO_B_CORREO=${USUARIOS.B.correo} CERROJO_B_CONTRASENA=${USUARIOS.B.contrasena} \\\n` +
-      `  node bin/cerrojo.js aislamiento --autorizo --desde salida/web.json --probar-escritura --salida salida/aislamiento.json\n`,
+      `  node bin/cerrojo.js aislamiento --autorizo --permitir-local --desde salida/web.json \\\n` +
+      `    --probar-escritura --base-desechable --salida salida/aislamiento.json\n` +
+      `  node bin/cerrojo.js repo demo/app-vulnerable --salida salida/repo.json\n` +
+      `  node bin/cerrojo.js informe salida/web.json salida/aislamiento.json salida/repo.json --salida salida/informe.html\n\n` +
+      `La base de datos de esta demo está en memoria y desaparece al parar el servidor: por eso\n` +
+      `aquí sí se puede usar --probar-escritura.\n`,
   );
 }

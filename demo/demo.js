@@ -22,13 +22,14 @@ const aDocs = process.argv.includes('--docs');
 const salida = join(RAIZ, aDocs ? 'docs' : 'salida');
 mkdirSync(salida, { recursive: true });
 
-const demo = await iniciarDemo();
+// Con --docs el puerto es fijo para que el informe de ejemplo no cambie en cada generación.
+const demo = await iniciarDemo({ puerto: aDocs ? 54321 : undefined });
 const decir = (s) => process.stdout.write(`${s}\n`);
 try {
   decir(`App ficticia vulnerable en ${demo.url}\n`);
 
   decir('1/3 · Aplicación desplegada, sin sesión');
-  const web = await auditarWeb(demo.url, { cliente: new Cliente({ pausaMs: 0 }) });
+  const web = await auditarWeb(demo.url, { cliente: new Cliente({ pausaMs: 0, permitirLocal: true }) });
   decir(`${resumenTexto(web)}\n`);
 
   decir('2/3 · Aislamiento entre dos cuentas de prueba');
@@ -38,8 +39,10 @@ try {
     tablas: web.superficie.tablas,
     usuarioA: demo.usuarios.A,
     usuarioB: demo.usuarios.B,
+    // La base de la demo vive en memoria y se destruye al terminar: es desechable de verdad.
     probarEscritura: true,
-    cliente: new Cliente({ pausaMs: 0 }),
+    baseDesechable: true,
+    cliente: new Cliente({ pausaMs: 0, permitirLocal: true }),
   });
   decir(`${resumenTexto(aislamiento)}\n`);
 

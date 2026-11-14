@@ -2,10 +2,19 @@
 //
 // Es la comprobación que los escáneres automáticos no hacen: en lugar de mirar si RLS está
 // "activado", inicia sesión con dos cuentas de prueba (A y B) y comprueba si cada una recibe
-// filas de la otra. Las filas se procesan en memoria y solo se conservan recuentos y nombres
-// de columna.
+// filas de la otra.
+//
+// Qué datos toca, sin eufemismos:
+// - LEE filas completas: hasta `limite` (máximo 1.000) por cuenta y por tabla. Esas filas
+//   llegan a la memoria de este proceso con todos sus valores. No se escriben en disco ni en el
+//   resultado (solo recuentos y nombres de columna), pero se han descargado. Por eso la prueba
+//   debe hacerse con cuentas y datos ficticios, o en un entorno de pruebas.
+// - La comprobación opcional de escritura ejecuta un UPDATE real. Asigna a una columna el valor
+//   que ya tiene, pero para la base de datos es una escritura: dispara triggers (por ejemplo
+//   los que actualizan updated_at o envían avisos), genera WAL y eventos de Realtime. Solo se
+//   permite contra una base local y desechable.
 
-import { Cliente } from './http.js';
+import { Cliente, esLoopback } from './http.js';
 import { Supabase } from './supabase.js';
 import { hallazgo } from './catalogo.js';
 import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esUuid, esIdentificador } from './util.js';
@@ -18,10 +27,23 @@ import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_
  *   cliente?: Cliente, avisar?: (s: string) => void
  * }} op
  */
+/** Tope de filas que se leen por cuenta y tabla. */
+export const LIMITE_MAXIMO = 1000;
+
 export async function probarAislamiento(op) {
   const cliente = op.cliente ?? new Cliente();
   const avisar = op.avisar ?? (() => {});
-  const limite = op.limite ?? 1000;
+  const limite = Math.min(Math.max(Math.trunc(Number(op.limite ?? LIMITE_MAXIMO)) || LIMITE_MAXIMO, 1), LIMITE_MAXIMO);
+  // La escritura se decide antes de hacer ninguna petición y no depende de quien llame a esta
+  // función: fuera de una base local declarada desechable, no se ejecuta.
+  if (op.probarEscritura && !(esLoopback(op.supabaseUrl) && op.baseDesechable === true)) {
+    throw new Error(
+      'La prueba de escritura ejecuta un UPDATE real (puede disparar triggers aunque no cambie valores). ' +
+        'Solo está disponible contra una base local y desechable: Supabase en 127.0.0.1/localhost, ' +
+        'con --permitir-local y --base-desechable. Contra un proyecto alojado no se ejecuta.',
+    );
+  }
+  let filasLeidas = 0;
   const inicio = ahoraIso();
   const sb = new Supabase(cliente, op.supabaseUrl, op.clave);
 
@@ -33,6 +55,7 @@ export async function probarAislamiento(op) {
   }
   if (sesiones.A.id === sesiones.B.id) throw new Error('Los usuarios A y B son la misma cuenta; hacen falta dos cuentas distintas.');
   avisar('Sesión iniciada con las dos cuentas de prueba');
+  avisar(`Se leerán hasta ${limite} filas completas por cuenta y tabla (en memoria; no se guardan sus valores)`);
 
   const hallazgos = [];
   const superadas = [];
@@ -56,6 +79,7 @@ export async function probarAislamiento(op) {
     }
 
     const filas = [...vistas.A.filas, ...vistas.B.filas];
+    filasLeidas += filas.length;
     const columnas = Object.keys(filas[0] ?? {});
     const columnaDueno = detectarColumnaDueno(filas, columnas, sesiones);
     const fila = { tabla, columnaDueno, A: vistas.A.total ?? vistas.A.filas.length, B: vistas.B.total ?? vistas.B.filas.length, resultado: 'no_concluyente' };
@@ -128,8 +152,20 @@ export async function probarAislamiento(op) {
       en: `No identifiable owner column in: ${sinDueno.join('; ')}. Both accounts read rows; confirm manually whether this is shared content.`,
     });
   }
-  if (!op.probarEscritura) {
-    notas.push({ es: 'No se probó la escritura cruzada (opción --probar-escritura).', en: 'Cross-user writes were not tested (option --probar-escritura).' });
+  notas.push({
+    es: `Para la prueba de aislamiento se descargaron ${filasLeidas} fila(s) completas (tope: ${limite} por cuenta y tabla). Se procesaron en memoria; en este informe solo constan recuentos y nombres de columna.`,
+    en: `The isolation test downloaded ${filasLeidas} full row(s) (cap: ${limite} per account and table). They were processed in memory; this report only holds counts and column names.`,
+  });
+  if (op.probarEscritura) {
+    notas.push({
+      es: 'La prueba de escritura ejecutó sentencias UPDATE reales sobre una base local declarada desechable. Asignan a una columna el valor que ya tenía, pero disparan triggers y pueden haber modificado columnas derivadas (p. ej. updated_at).',
+      en: 'The write test ran real UPDATE statements against a local database declared disposable. They set a column to its existing value, but fire triggers and may have modified derived columns (e.g. updated_at).',
+    });
+  } else {
+    notas.push({
+      es: 'No se probó la escritura cruzada. Esa comprobación solo se ejecuta contra una base local desechable; en un proyecto alojado, la escritura se evalúa revisando las políticas.',
+      en: 'Cross-user writes were not tested. That check only runs against a disposable local database; on a hosted project, writes are assessed by reviewing the policies.',
+    });
   }
 
   return {
@@ -143,6 +179,8 @@ export async function probarAislamiento(op) {
     superadas,
     notas,
     matriz,
+    lectura: { limitePorCuentaYTabla: limite, filasDescargadas: filasLeidas },
+    escrituraProbada: !!op.probarEscritura,
   };
 }
 

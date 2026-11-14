@@ -16,7 +16,7 @@ import { Cliente } from '../src/http.js';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(RAIZ, 'demo', 'app-vulnerable');
-const cliente = () => new Cliente({ pausaMs: 0 });
+const cliente = () => new Cliente({ pausaMs: 0, permitirLocal: true });
 const ids = (r) => r.hallazgos.map((h) => `${h.id} ${h.donde}`).sort();
 const tiene = (r, id, donde) => r.hallazgos.some((h) => h.id === id && (!donde || h.donde === donde));
 const graves = (r) => r.hallazgos.filter((h) => h.gravedad === 'critica' || h.gravedad === 'alta');
@@ -76,7 +76,7 @@ test('aislamiento (vulnerable): RLS "activado" no impide leer ni modificar datos
   const web = await auditarWeb(vulnerable.url, { cliente: cliente() });
   // "clients" pasa la comprobación sin sesión…
   assert.ok(!tiene(web, 'S-TABLA-LEGIBLE-ANON', 'public.clients'));
-  const r = await aislar(vulnerable, web, { probarEscritura: true });
+  const r = await aislar(vulnerable, web, { probarEscritura: true, baseDesechable: true });
   // …pero un usuario registrado ve y modifica los clientes de otro.
   assert.ok(tiene(r, 'A-LECTURA-CRUZADA', 'public.clients'));
   assert.ok(tiene(r, 'A-ESCRITURA-CRUZADA', 'public.clients'));
@@ -94,17 +94,17 @@ test('aislamiento (vulnerable): RLS "activado" no impide leer ni modificar datos
   assert.ok(!r.hallazgos.some((h) => h.donde === 'public.invoices'));
 });
 
-test('aislamiento: la prueba de escritura no altera ningún dato', async () => {
+test('aislamiento: en la demo, que no tiene triggers, la prueba de escritura deja las filas como estaban', async () => {
   const antes = (await vulnerable.db.query('select md5(string_agg(c::text, \'|\' order by id)) as h from public.clients c')).rows[0].h;
   const web = await auditarWeb(vulnerable.url, { cliente: cliente() });
-  await aislar(vulnerable, web, { probarEscritura: true });
+  await aislar(vulnerable, web, { probarEscritura: true, baseDesechable: true });
   const despues = (await vulnerable.db.query('select md5(string_agg(c::text, \'|\' order by id)) as h from public.clients c')).rows[0].h;
   assert.equal(antes, despues);
 });
 
 test('privacidad: los resultados no contienen valores de las filas leídas', async () => {
   const web = await auditarWeb(vulnerable.url, { cliente: cliente() });
-  const aislamiento = await aislar(vulnerable, web, { probarEscritura: true });
+  const aislamiento = await aislar(vulnerable, web, { probarEscritura: true, baseDesechable: true });
   const volcado = JSON.stringify([web, aislamiento]) + generarInforme([web, aislamiento]);
   for (const valor of ['token-ficticio', '600000003', 'clinica1@example.test', 'Bruno Ejemplo', 'ES0000000000000000000002', vulnerable.usuarios.B.id, vulnerable.usuarios.A.contrasena]) {
     assert.ok(!volcado.includes(valor), `no debería aparecer: ${valor}`);
@@ -126,6 +126,7 @@ test('con los arreglos aplicados desaparecen los hallazgos graves (web y aislami
     usuarioA: corregida.usuarios.A,
     usuarioB: corregida.usuarios.B,
     probarEscritura: true,
+    baseDesechable: true,
     cliente: cliente(),
   });
   assert.deepEqual(r.hallazgos, [], JSON.stringify(ids(r)));
@@ -227,10 +228,10 @@ test('CLI: flujo completo web → aislamiento → repo → informe', async () =>
   temporales.push(dir);
   const { A, B } = vulnerable.usuarios;
 
-  const web = await ejecutar(['web', vulnerable.url, '--autorizo', '--ci', '--salida', join(dir, 'web.json')]);
+  const web = await ejecutar(['web', vulnerable.url, '--autorizo', '--permitir-local', '--ci', '--salida', join(dir, 'web.json')]);
   assert.equal(web.status, 1, web.stderr); // --ci: hay hallazgos graves
   assert.equal(JSON.parse(readFileSync(join(dir, 'web.json'), 'utf8')).autorizacion.declarada, true);
-  const aislamiento = await ejecutar(['aislamiento', '--autorizo', '--desde', join(dir, 'web.json'), '--probar-escritura', '--salida', join(dir, 'aislamiento.json')], {
+  const aislamiento = await ejecutar(['aislamiento', '--autorizo', '--permitir-local', '--desde', join(dir, 'web.json'), '--probar-escritura', '--base-desechable', '--salida', join(dir, 'aislamiento.json')], {
     CERROJO_A_CORREO: A.correo, CERROJO_A_CONTRASENA: A.contrasena, CERROJO_B_CORREO: B.correo, CERROJO_B_CONTRASENA: B.contrasena,
   });
   assert.equal(aislamiento.status, 0, aislamiento.stderr);

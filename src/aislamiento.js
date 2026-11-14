@@ -17,7 +17,7 @@
 import { Cliente, esLoopback } from './http.js';
 import { Supabase } from './supabase.js';
 import { hallazgo } from './catalogo.js';
-import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esUuid, esIdentificador } from './util.js';
+import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esIdentificador } from './util.js';
 
 /**
  * @param {{
@@ -184,15 +184,14 @@ export async function probarAislamiento(op) {
   };
 }
 
-/** Columna que identifica al dueño: preferimos una cuyo valor coincide con el id de A o B. */
+/**
+ * Columna que identifica al dueño de cada fila. Solo se acepta una columna en la que aparezca
+ * el id de alguna de las dos cuentas de prueba: es la única evidencia de que guarda usuarios.
+ * Una columna que solo "suena" a dueño (account_id, profile_id…) puede apuntar a otra cosa
+ * —una organización, por ejemplo— y tomarla por dueño convertiría cada fila en una falsa fuga.
+ */
 function detectarColumnaDueno(filas, columnas, sesiones) {
   const ids = [sesiones.A.id, sesiones.B.id];
   const conCoincidencia = columnas.filter((c) => filas.some((f) => ids.includes(f[c])));
-  const porNombre = (cs) => cs.find((c) => RE_COLUMNA_DUENO.test(c));
-  return (
-    porNombre(conCoincidencia) ??
-    conCoincidencia[0] ??
-    columnas.find((c) => RE_COLUMNA_DUENO.test(c) && filas.some((f) => esUuid(f[c]))) ??
-    null
-  );
+  return conCoincidencia.find((c) => RE_COLUMNA_DUENO.test(c)) ?? conCoincidencia[0] ?? null;
 }

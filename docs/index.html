@@ -1,0 +1,103 @@
+<!doctype html>
+<!--
+  BORRADOR DE PÁGINA DE PRESENTACIÓN — NO PUBLICADA.
+  Antes de publicar: completa docs/LANZAMIENTO.md, sustituye [CONTACTO] y quita la franja
+  de borrador. No añadas testimonios, cifras ni clientes que no existan.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>cerrojo — revisión de seguridad para apps hechas con IA</title>
+<style>
+  :root { --tinta:#1b1f24; --suave:#5b6470; --linea:#d9dee4; --fondo:#f6f7f9; --papel:#fff; --acento:#b3261e; --bien:#1f7a4d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--fondo); color:var(--tinta); font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .borrador { background:#12161b; color:#fff; text-align:center; font-size:14px; padding:8px 16px; }
+  main { max-width:760px; margin:0 auto; padding:56px 20px 72px; }
+  h1 { font-size:clamp(30px, 6vw, 44px); line-height:1.12; letter-spacing:-.02em; margin:0 0 18px; text-wrap:balance; }
+  h2 { font-size:22px; margin:52px 0 12px; letter-spacing:-.01em; }
+  p { margin:0 0 16px; }
+  .entrada { font-size:19px; color:#333a43; }
+  code, pre { font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  code { background:#eceff3; padding:1px 5px; border-radius:4px; }
+  pre { background:#12161b; color:#e7ebf0; padding:16px 18px; border-radius:8px; overflow-x:auto; margin:0 0 16px; }
+  pre .mal { color:#ff9d8f; } pre .gris { color:#8b96a3; }
+  .boton { display:inline-block; background:var(--tinta); color:#fff; text-decoration:none; padding:12px 20px; border-radius:8px; font-weight:600; margin:6px 10px 6px 0; }
+  .boton.sec { background:transparent; color:var(--tinta); border:1.5px solid var(--tinta); }
+  .boton:focus-visible { outline:3px solid #6aa3ff; outline-offset:2px; }
+  ol.pasos { padding:0; margin:0; list-style:none; counter-reset:paso; }
+  ol.pasos li { counter-increment:paso; position:relative; padding:0 0 18px 46px; }
+  ol.pasos li::before { content:counter(paso); position:absolute; left:0; top:1px; width:30px; height:30px; border-radius:50%; background:var(--tinta); color:#fff; font-weight:700; font-size:15px; display:grid; place-items:center; }
+  .caja { background:var(--papel); border:1px solid var(--linea); border-radius:8px; padding:18px 20px; margin:0 0 16px; }
+  .caja.no { border-left:4px solid var(--acento); }
+  ul { margin:0 0 16px; padding-left:22px; } li { margin-bottom:6px; }
+  table { width:100%; border-collapse:collapse; background:var(--papel); border:1px solid var(--linea); border-radius:8px; }
+  th, td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  td.precio { font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .nota { color:var(--suave); font-size:15px; }
+  footer { margin-top:56px; padding-top:16px; border-top:1px solid var(--linea); color:var(--suave); font-size:14px; }
+  a { color:inherit; }
+</style>
+</head>
+<body>
+<div class="borrador">Borrador sin publicar · pendiente de revisión</div>
+<main>
+  <h1>¿Pueden tus usuarios ver los datos de otros usuarios?</h1>
+  <p class="entrada">Revisión de seguridad a precio cerrado para aplicaciones hechas con Lovable, Bolt o Cursor sobre Supabase. Inicio sesión con dos cuentas de prueba y compruebo qué recibe cada una.</p>
+  <p>
+    <a class="boton" href="ejemplo-informe.html">Ver un informe de ejemplo</a>
+    <a class="boton sec" href="#precio">Qué incluye y cuánto cuesta</a>
+  </p>
+
+  <h2>El fallo que los paneles no enseñan</h2>
+  <p>En estas aplicaciones el navegador habla directamente con la base de datos. Lo único que separa a un usuario de los datos de otro son las reglas de acceso de cada tabla (RLS). El problema habitual no es que falten:</p>
+<pre><span class="gris">-- "RLS activado": el panel muestra la tabla como protegida</span>
+alter table clients enable row level security;
+
+<span class="gris">-- …con una regla que deja pasar a cualquiera que haya iniciado sesión</span>
+create policy "clientes" on clients
+  for all using (<span class="mal">auth.uid() is not null</span>);</pre>
+  <p>Desde fuera, sin cuenta, no se ve nada. Pero cualquiera que se registre lee y modifica los clientes de todos los demás. Solo se descubre iniciando sesión con dos cuentas distintas y comparando.</p>
+
+  <h2>Cómo es la revisión</h2>
+  <ol class="pasos">
+    <li><b>Desde fuera.</b> Qué puede leer de tu app alguien sin cuenta: tablas, archivos y claves publicadas en el código.</li>
+    <li><b>Entre usuarios.</b> Dos cuentas de prueba, y la comprobación de si una recibe datos de la otra. Se hace en un entorno de pruebas o con datos ficticios.</li>
+    <li><b>Reglas y código.</b> Las reglas de acceso de cada tabla, las vistas, las funciones y las Edge Functions, leídas una a una.</li>
+    <li><b>Informe.</b> Cada problema con dónde está, qué se observó, por qué importa y el SQL exacto para arreglarlo. Y una llamada para repasarlo.</li>
+  </ol>
+
+  <h2>Lo que no es</h2>
+  <div class="caja no">
+    <ul>
+      <li>No es una prueba de penetración completa ni una certificación.</li>
+      <li>No cubre la lógica de negocio ni los pagos.</li>
+      <li>No garantiza que la aplicación sea segura. Dice qué se comprobó, qué se encontró y qué quedó sin revisar.</li>
+      <li>Solo sirve para aplicaciones que usan Supabase desde el navegador.</li>
+    </ul>
+  </div>
+
+  <h2 id="precio">Qué incluye y cuánto cuesta</h2>
+  <table>
+    <tr><td><b>Revisión</b><br><span class="nota">Los cuatro pasos de arriba. Hasta 15 tablas y 10 Edge Functions. Entrega en 3 días laborables.</span></td><td class="precio">290 €</td></tr>
+    <tr><td><b>Revisión + arreglos</b><br><span class="nota">Además, una migración SQL con las correcciones lista para que la revises y la apliques, y una segunda pasada para comprobar que los problemas han desaparecido.</span></td><td class="precio">590 €</td></tr>
+    <tr><td><b>Repaso tras cambios</b><br><span class="nota">Repetir las comprobaciones después de añadir funcionalidades. Para quien ya ha hecho una revisión.</span></td><td class="precio">90 €</td></tr>
+  </table>
+  <p class="nota" style="margin-top:10px">Precios sin IVA. Para empezar hacen falta acceso al repositorio, dos cuentas de prueba y una autorización por escrito de una página.</p>
+
+  <h2>Tus datos</h2>
+  <p>Para saber si una tabla se filtra hay que pedirle filas: la comprobación entre usuarios descarga hasta 1.000 filas por cuenta y tabla y las compara en memoria. No se guardan y en el informe solo aparecen recuentos y nombres de columna, pero por eso mismo la prueba se hace en un entorno de pruebas o con datos ficticios, no con los datos de tus usuarios. No se escribe nada en tu base de datos.</p>
+
+  <h2>La herramienta es abierta</h2>
+  <p>Las comprobaciones automáticas se hacen con <code>cerrojo</code>, de código abierto. Puedes ejecutarla tú sobre tu propia aplicación, con una demo local incluida para ver cómo funciona sin tocar nada real.</p>
+
+  <h2>Contacto</h2>
+  <p>[CONTACTO]</p>
+
+  <footer>cerrojo · herramienta bajo licencia MIT · esta página no usa cookies ni analítica</footer>
+</main>
+</body>
+</html>

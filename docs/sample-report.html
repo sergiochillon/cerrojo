@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Security audit report — Clientia — local demo environment</title>
+<style>
+  :root { --tinta:#1b1f24; --suave:#5b6470; --linea:#d9dee4; --fondo:#f6f7f9; --papel:#fff;
+    --critica:#b3261e; --alta:#c2570c; --media:#8a6d00; --baja:#2f6f9f; --info:#5b6470; --bien:#1f7a4d; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--fondo); color:var(--tinta); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 20px 64px; }
+  h1 { font-size: 28px; line-height:1.2; margin: 0 0 4px; letter-spacing:-.01em; }
+  h2 { font-size: 19px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--tinta); }
+  h3 { font-size: 16px; margin: 0; }
+  p { margin: 0 0 12px; }
+  code, pre { font: 13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  code { background:#eceff3; padding: 1px 5px; border-radius: 4px; overflow-wrap:anywhere; }
+  pre { background:#12161b; color:#e7ebf0; padding: 12px 14px; border-radius: 6px; white-space: pre-wrap; overflow-wrap:anywhere; margin:0; }
+  .meta { color:var(--suave); margin: 0 0 20px; }
+  .meta b { color:var(--tinta); font-weight:600; }
+  .objetivo { font-size:16px; margin:0 0 6px; overflow-wrap:anywhere; }
+  .chips { display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; margin: 16px 0; }
+  .chip { background:var(--papel); border:1px solid var(--linea); border-top:4px solid var(--c); border-radius:6px; padding:10px 12px; }
+  .chip b { display:block; font-size:24px; line-height:1.1; font-variant-numeric: tabular-nums; }
+  .chip span { color:var(--suave); font-size:13px; }
+  .g-critica { --c:var(--critica); } .g-alta { --c:var(--alta); } .g-media { --c:var(--media); } .g-baja { --c:var(--baja); } .g-info { --c:var(--info); }
+  .veredicto { background:var(--papel); border:1px solid var(--linea); border-left:4px solid var(--tinta); border-radius:6px; padding:12px 16px; }
+  .hallazgo { background:var(--papel); border:1px solid var(--linea); border-left:5px solid var(--c); border-radius:6px; padding:16px 18px; margin: 0 0 14px; break-inside: avoid; }
+  .hallazgo header { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; margin-bottom:10px; }
+  .etq { background:var(--c); color:#fff; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; }
+  dl { margin:0; display:grid; grid-template-columns: 150px 1fr; gap: 8px 14px; }
+  dt { color:var(--suave); font-size:13px; padding-top:2px; }
+  dd { margin:0; min-width:0; }
+  table { width:100%; border-collapse:collapse; background:var(--papel); border:1px solid var(--linea); border-radius:6px; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--suave); }
+  tr:last-child td { border-bottom:0; }
+  .tabla-ancha { overflow-x:auto; }
+  table code { white-space:nowrap; }
+  .r-fuga { color:var(--critica); font-weight:700; } .r-aislada { color:var(--bien); font-weight:600; }
+  ul { margin:0 0 12px; padding-left: 20px; } li { margin-bottom:6px; }
+  .ok li::marker { content: "✓  "; color: var(--bien); }
+  footer { margin-top:48px; padding-top:12px; border-top:1px solid var(--linea); color:var(--suave); font-size:13px; }
+  @media (max-width: 640px) { .chips { grid-template-columns: repeat(2, 1fr); } dl { grid-template-columns: 1fr; gap:2px 0; } dt { padding-top:8px; } }
+  @media print { body { background:#fff; font-size:12px; } main { padding:0; max-width:none; } .hallazgo, .chip, table, .veredicto { box-shadow:none; } h2 { break-after: avoid; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Security audit report</h1>
+  <p class="objetivo"><code>Clientia — local demo environment</code></p>
+  <p class="meta">Date: <b>2026-11-14</b> · Prepared for: <b>Clientia (fictional demo app)</b> · Audit performed by: <b>cerrojo · demo</b></p>
+
+  <section>
+    <h2>Summary</h2>
+    <div class="chips"><div class="chip g-critica"><b>7</b><span>Critical</span></div><div class="chip g-alta"><b>9</b><span>High</span></div><div class="chip g-media"><b>10</b><span>Medium</span></div><div class="chip g-baja"><b>4</b><span>Low</span></div><div class="chip g-info"><b>4</b><span>Info</span></div></div>
+    <p class="veredicto">There are critical or high severity findings. Recommendation: fix them before opening the application to real users, or as soon as possible if it is already in use.</p>
+  </section>
+
+  <section>
+    <h2>Scope: what was checked</h2>
+    <div class="tabla-ancha"><table><tbody><tr><td>Deployed application (no session)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-14 23:22 UTC · 21 HTTP requests</td></tr><tr><td>User isolation (two test accounts)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-14 23:22 UTC · 26 HTTP requests</td></tr><tr><td>Repository (SQL migrations and code)</td><td><code>app-vulnerable</code></td><td>2026-11-14 23:22 UTC</td></tr></tbody></table></div>
+    <p style="margin-top:10px"><b>Authorization:</b> The person running the tool declared they own the application or hold written authorization from its owner.</p>
+  </section>
+
+  <section>
+    <h2>Findings (34)</h2>
+    
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>1. A user can modify other users’ rows</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.clients</code></dd>
+        <dt>What was observed</dt><dd>Owner column: user_id. Result: account A updated 3 row(s) of the other; account B updated 2 row(s) of the other. The UPDATE set the column to its existing value, but it is a real write: it fires triggers and may have changed derived columns.</dd>
+        <dt>Why it matters</dt><dd>Verified on a disposable local database: one test account successfully ran an UPDATE on the other’s rows. A user can tamper with other people’s data.</dd>
+        <dt>How to fix it</dt><dd><pre>Restrict update/delete to the owner:
+create policy &quot;modify own&quot; on public.clients for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>2. A user can modify other users’ rows</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>What was observed</dt><dd>Owner column: user_id. Result: account A updated 1 row(s) of the other; account B updated 1 row(s) of the other. The UPDATE set the column to its existing value, but it is a real write: it fires triggers and may have changed derived columns.</dd>
+        <dt>Why it matters</dt><dd>Verified on a disposable local database: one test account successfully ran an UPDATE on the other’s rows. A user can tamper with other people’s data.</dd>
+        <dt>How to fix it</dt><dd><pre>Restrict update/delete to the owner:
+create policy &quot;modify own&quot; on public.integration_tokens for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>3. A user can read other users’ rows</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>What was observed</dt><dd>Owner column: user_id. Result: account A receives 1 row(s) it does not own (1 from the other test account); account B receives 1 row(s) it does not own (1 from the other test account). Table columns: id, user_id, provider, access_token, created_at. Rows were downloaded for comparison; their values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Verified with two test accounts: one receives rows that belong to the other. Any registered user can see other people’s data. RLS may be &quot;enabled&quot; and still allow it.</dd>
+        <dt>How to fix it</dt><dd><pre>Replace the read policy with one that compares against the owner:
+drop policy if exists &quot;&lt;current policy&gt;&quot; on public.integration_tokens;
+create policy &quot;read own&quot; on public.integration_tokens for select to authenticated using ((select auth.uid()) = user_id);
+Re-run this test afterwards.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>4. Public environment variable named like a secret</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>src/integrations/supabase/client.ts</code></dd>
+        <dt>What was observed</dt><dd>VITE_OPENAI_API_KEY — src/integrations/supabase/client.ts:10</dd>
+        <dt>Why it matters</dt><dd>Variables prefixed VITE_, NEXT_PUBLIC_ or similar are embedded in the JavaScript every visitor receives.</dd>
+        <dt>How to fix it</dt><dd><pre>Drop the public prefix, use the variable server-side only and rotate the value.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>5. Table without RLS enabled</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>What was observed</dt><dd>Created in supabase/migrations/20260901100000_esquema_inicial.sql. Columns: id, user_id, provider, access_token, created_at.</dd>
+        <dt>Why it matters</dt><dd>Without RLS, any request with the public key can read and write the whole table if it has API grants (the norm in pre-2026 projects).</dd>
+        <dt>How to fix it</dt><dd><pre>alter table public.integration_tokens enable row level security;
+Then create the minimum policies the app needs (with none, only the server can access).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>6. Table readable without signing in</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>What was observed</dt><dd>2 row(s) visible without a session. Columns: id, user_id, provider, access_token, created_at. Sensitive categories by column name: credenciales. One row was downloaded to check this; its values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Anyone with the URL and the public key (both are in the site) can download these rows. Unless the table is public on purpose, this is a data leak.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable RLS and restrict reads to each row owner:
+alter table public.integration_tokens enable row level security;
+create policy &quot;read own&quot; on public.integration_tokens for select to authenticated using ((select auth.uid()) = user_id);
+If the table must be public, expose only the needed columns through a view.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Critical</span><h3>7. Third-party secret shipped to the browser</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>/assets/index-4f3a9c.js</code></dd>
+        <dt>What was observed</dt><dd>Clave de API de OpenAI in /assets/index-4f3a9c.js: sk-pro…Zwww (48 caracteres)</dd>
+        <dt>Why it matters</dt><dd>A secret key in browser code is public. It can be used at your expense (API usage, charges) or to access data in that service.</dd>
+        <dt>How to fix it</dt><dd><pre>Revoke the key in the provider dashboard and create a new one. Move the call to an Edge Function or your server and store the key as a server secret.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>8. A user can read other users’ rows</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.clients</code></dd>
+        <dt>What was observed</dt><dd>Owner column: user_id. Result: account A receives 4 row(s) it does not own (3 from the other test account); account B receives 3 row(s) it does not own (2 from the other test account). Table columns: id, user_id, name, email, phone, notes, created_at. Rows were downloaded for comparison; their values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Verified with two test accounts: one receives rows that belong to the other. Any registered user can see other people’s data. RLS may be &quot;enabled&quot; and still allow it.</dd>
+        <dt>How to fix it</dt><dd><pre>Replace the read policy with one that compares against the owner:
+drop policy if exists &quot;&lt;current policy&gt;&quot; on public.clients;
+create policy &quot;read own&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
+Re-run this test afterwards.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>9. A user can read other users’ rows</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.profiles</code></dd>
+        <dt>What was observed</dt><dd>Owner column: id. Result: account A receives 2 row(s) it does not own (1 from the other test account); account B receives 2 row(s) it does not own (1 from the other test account). Table columns: id, email, full_name, role, plan, created_at. Rows were downloaded for comparison; their values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Verified with two test accounts: one receives rows that belong to the other. Any registered user can see other people’s data. RLS may be &quot;enabled&quot; and still allow it.</dd>
+        <dt>How to fix it</dt><dd><pre>Replace the read policy with one that compares against the owner:
+drop policy if exists &quot;&lt;current policy&gt;&quot; on public.profiles;
+create policy &quot;read own&quot; on public.profiles for select to authenticated using ((select auth.uid()) = id);
+Re-run this test afterwards.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>10. Edge Function uses the service key without checking the caller</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>supabase/functions/delete-account/index.ts</code></dd>
+        <dt>What was observed</dt><dd>supabase/functions/delete-account/index.ts: uses SERVICE_ROLE and no identity check was found (heuristic; review manually).</dd>
+        <dt>Why it matters</dt><dd>The function acts with full rights. If it does not identify the user or check resource ownership, anyone can ask it to read or modify other people’s data.</dd>
+        <dt>How to fix it</dt><dd><pre>Get the user with supabase.auth.getUser(token) first and filter every query by their id; never accept a user_id from the request body.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>11. Users can edit their own row, which holds privilege columns</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.profiles</code></dd>
+        <dt>What was observed</dt><dd>Columns: role, plan. Modifying policy: &quot;Users can update own profile&quot;. No column-level restriction or trigger found in the migrations.</dd>
+        <dt>Why it matters</dt><dd>RLS filters rows, not columns. If the update policy lets users modify their row and that row stores role, plan or balance, they can change them from the browser console.</dd>
+        <dt>How to fix it</dt><dd><pre>Move those columns to another table with no update policy, or revoke column update:
+revoke update on public.profiles from authenticated;
+grant update (&lt;harmless columns&gt;) on public.profiles to authenticated;</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>12. Policy lets anyone read the whole table</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.profiles</code></dd>
+        <dt>What was observed</dt><dd>Policy &quot;Profiles are viewable by everyone&quot; (select, roles: public) with condition: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>The condition is always true and also applies to visitors without a session. Only correct for genuinely public content.</dd>
+        <dt>How to fix it</dt><dd><pre>If it is not public content:
+drop policy &quot;Profiles are viewable by everyone&quot; on public.profiles;
+create policy &quot;read own&quot; on public.profiles for select to authenticated using ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>13. Policy relies on user-editable metadata</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.invoices</code></dd>
+        <dt>What was observed</dt><dd>Policy &quot;Admins read all invoices&quot;: (auth.jwt() -&gt; &#39;user_metadata&#39; -&gt;&gt; &#39;role&#39;) = &#39;admin&#39;. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>user_metadata (raw_user_meta_data) can be changed by the user via supabase.auth.updateUser(). If a policy grants access based on it, anyone can make themselves admin.</dd>
+        <dt>How to fix it</dt><dd><pre>Store roles in a dedicated RLS-protected table or in app_metadata (server-editable only) and check that in the policy.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>14. Policy only requires being signed in</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.clients</code></dd>
+        <dt>What was observed</dt><dd>Policy &quot;Authenticated users can manage clients&quot; (all, roles: authenticated) with condition: auth.uid() is not null. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>The most common flaw: RLS shows as &quot;enabled&quot; everywhere, but any registered user reaches everyone’s rows. Signing up is usually free.</dd>
+        <dt>How to fix it</dt><dd><pre>drop policy &quot;Authenticated users can manage clients&quot; on public.clients;
+create policy &quot;own rows only&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
+Verify with the isolation test (cerrojo aislamiento).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>15. Table readable without signing in</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.client_directory</code></dd>
+        <dt>What was observed</dt><dd>6 row(s) visible without a session. Columns: id, name, email, phone, owner_name. Sensitive categories by column name: contacto. One row was downloaded to check this; its values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Anyone with the URL and the public key (both are in the site) can download these rows. Unless the table is public on purpose, this is a data leak.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable RLS and restrict reads to each row owner:
+alter table public.client_directory enable row level security;
+create policy &quot;read own&quot; on public.client_directory for select to authenticated using ((select auth.uid()) = user_id);
+If the table must be public, expose only the needed columns through a view.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">High</span><h3>16. Table readable without signing in</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.profiles</code></dd>
+        <dt>What was observed</dt><dd>3 row(s) visible without a session. Columns: id, email, full_name, role, plan, created_at. Sensitive categories by column name: contacto, personal. One row was downloaded to check this; its values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Anyone with the URL and the public key (both are in the site) can download these rows. Unless the table is public on purpose, this is a data leak.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable RLS and restrict reads to each row owner:
+alter table public.profiles enable row level security;
+create policy &quot;read own&quot; on public.profiles for select to authenticated using ((select auth.uid()) = user_id);
+If the table must be public, expose only the needed columns through a view.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>17. Admin rights decided in the browser</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>src/hooks/useAdmin.ts</code></dd>
+        <dt>What was observed</dt><dd>src/hooks/useAdmin.ts:3 — localStorage.getItem(&#39;isAdmin&#39;)</dd>
+        <dt>Why it matters</dt><dd>Anything checked in the browser can be changed from the console. Hiding a button does not protect data: real authorization must live in RLS or on the server.</dd>
+        <dt>How to fix it</dt><dd><pre>Keep the visual check if you like, but make sure every admin table and function verifies the role server-side.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>18. Edge Function with JWT verification disabled</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>supabase/config.toml</code></dd>
+        <dt>What was observed</dt><dd>[functions.delete-account] verify_jwt = false — supabase/config.toml</dd>
+        <dt>Why it matters</dt><dd>Anyone on the internet can invoke it. Fine for webhooks that verify their own signature; dangerous if the function trusts its caller.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable verify_jwt or validate inside the function (webhook signature or supabase.auth.getUser with the received token).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>19. Storage bucket created as public</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>storage/invoices-pdf</code></dd>
+        <dt>What was observed</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>Anyone with a file URL can download it without a session. Fine for avatars or public images; a problem for documents.</dd>
+        <dt>How to fix it</dt><dd><pre>If it stores private files: update storage.buckets set public = false where id = &#39;invoices-pdf&#39;; and serve files through signed URLs.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>20. SECURITY DEFINER function without a fixed search_path</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.is_admin</code></dd>
+        <dt>What was observed</dt><dd>public.is_admin — supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>It runs with its creator’s rights and bypasses RLS. Without a fixed search_path it can be tricked into running objects from another schema; and if in public it is callable via the API.</dd>
+        <dt>How to fix it</dt><dd><pre>Add &quot;set search_path = &#39;&#39;&quot; and schema-qualify names. Check the caller inside the function (auth.uid()). Revoke execute from anon if unneeded.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>21. Policy allows unrestricted writes</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.waitlist</code></dd>
+        <dt>What was observed</dt><dd>Policy &quot;Anyone can join the waitlist&quot; (insert, roles: anon, authenticated) with condition: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>With an always-true condition on insert/update/delete, whoever reaches the table can create, alter or delete anyone’s rows.</dd>
+        <dt>How to fix it</dt><dd><pre>drop policy &quot;Anyone can join the waitlist&quot; on public.waitlist;
+Create separate per-operation policies with using/with check ((select auth.uid()) = user_id).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>22. Policy lets anyone read the whole table</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.plans</code></dd>
+        <dt>What was observed</dt><dd>Policy &quot;Plans are public&quot; (select, roles: public) with condition: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>The condition is always true and also applies to visitors without a session. Only correct for genuinely public content.</dd>
+        <dt>How to fix it</dt><dd><pre>If it is not public content:
+drop policy &quot;Plans are public&quot; on public.plans;
+create policy &quot;read own&quot; on public.plans for select to authenticated using ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>23. View that may bypass RLS</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.client_directory</code></dd>
+        <dt>What was observed</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>By default a view queries tables with its creator’s rights, ignoring the reading user’s RLS policies.</dd>
+        <dt>How to fix it</dt><dd><pre>create or replace view public.client_directory with (security_invoker = on) as ...</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>24. Bucket files can be listed without signing in</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>storage/invoices-pdf</code></dd>
+        <dt>What was observed</dt><dd>2 object(s) listed without a session (counted only, nothing downloaded).</dd>
+        <dt>Why it matters</dt><dd>Anyone can enumerate uploaded files (and usually download them). Serious if they hold private documents or images.</dd>
+        <dt>How to fix it</dt><dd><pre>Create storage.objects policies limiting select to the user folder:
+create policy &quot;read own&quot; on storage.objects for select to authenticated using (bucket_id = &#39;invoices-pdf&#39; and (storage.foldername(name))[1] = (select auth.uid())::text);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>25. Sign-up does not require e-mail confirmation</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>http://127.0.0.1:54321/auth/v1/settings</code></dd>
+        <dt>What was observed</dt><dd>The public settings endpoint reports mailer_autoconfirm = true.</dd>
+        <dt>Why it matters</dt><dd>Anyone can create accounts with fake or third-party e-mails. Combined with policies that only require &quot;being authenticated&quot;, it amounts to public access.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable &quot;Confirm email&quot; under Authentication → Providers → Email.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Medium</span><h3>26. Table readable without signing in</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.plans</code></dd>
+        <dt>What was observed</dt><dd>2 row(s) visible without a session. Columns: id, title, monthly_price. Sensitive categories by column name: none detected by name. One row was downloaded to check this; its values were not stored.</dd>
+        <dt>Why it matters</dt><dd>Anyone with the URL and the public key (both are in the site) can download these rows. Unless the table is public on purpose, this is a data leak.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable RLS and restrict reads to each row owner:
+alter table public.plans enable row level security;
+create policy &quot;read own&quot; on public.plans for select to authenticated using ((select auth.uid()) = user_id);
+If the table must be public, expose only the needed columns through a view.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Low</span><h3>27. Edge Function with CORS open to any origin</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>supabase/functions/delete-account/index.ts</code></dd>
+        <dt>What was observed</dt><dd>supabase/functions/delete-account/index.ts</dd>
+        <dt>Why it matters</dt><dd>Any website can call the function from a user’s browser. It is the default template; restrict it for sensitive functions.</dd>
+        <dt>How to fix it</dt><dd><pre>Replace &quot;*&quot; with your application domain.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Low</span><h3>28. Unsanitised HTML injection</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>src/pages/ClientNotes.tsx</code></dd>
+        <dt>What was observed</dt><dd>src/pages/ClientNotes.tsx:3</dd>
+        <dt>Why it matters</dt><dd>If the content comes from users, it allows running JavaScript in other people’s browsers (XSS) and stealing their session.</dd>
+        <dt>How to fix it</dt><dd><pre>Sanitise with DOMPurify before inserting, or render as text.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Low</span><h3>29. Missing HTTP security headers</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>http://127.0.0.1:54321</code></dd>
+        <dt>What was observed</dt><dd>Missing: Content-Security-Policy, X-Content-Type-Options, Referrer-Policy, X-Frame-Options / frame-ancestors</dd>
+        <dt>Why it matters</dt><dd>They are a second line of defence against XSS, clickjacking and HTTP downgrade. Their absence is not exploitable on its own.</dd>
+        <dt>How to fix it</dt><dd><pre>Add them in your hosting config (Vercel/Netlify/Cloudflare): Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, Referrer-Policy and frame-ancestors.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Low</span><h3>30. Public source maps</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>/assets/index-4f3a9c.js.map</code></dd>
+        <dt>What was observed</dt><dd>1 reachable map(s), e.g. /assets/index-4f3a9c.js.map</dd>
+        <dt>Why it matters</dt><dd>They expose the original code with comments and names. Not a flaw by itself, but it makes finding others easier.</dd>
+        <dt>How to fix it</dt><dd><pre>Disable production source maps (Vite: build.sourcemap = false) or do not publish them.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Info</span><h3>31. Edge Function with JWT verification disabled</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>supabase/config.toml</code></dd>
+        <dt>What was observed</dt><dd>[functions.stripe-webhook] verify_jwt = false — supabase/config.toml</dd>
+        <dt>Why it matters</dt><dd>Anyone on the internet can invoke it. Fine for webhooks that verify their own signature; dangerous if the function trusts its caller.</dd>
+        <dt>How to fix it</dt><dd><pre>Enable verify_jwt or validate inside the function (webhook signature or supabase.auth.getUser with the received token).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Info</span><h3>32. Storage bucket created as public</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>storage/avatars</code></dd>
+        <dt>What was observed</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>Anyone with a file URL can download it without a session. Fine for avatars or public images; a problem for documents.</dd>
+        <dt>How to fix it</dt><dd><pre>If it stores private files: update storage.buckets set public = false where id = &#39;avatars&#39;; and serve files through signed URLs.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Info</span><h3>33. RLS enabled with no policies</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>public.audit_log</code></dd>
+        <dt>What was observed</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Why it matters</dt><dd>It is safe (nobody but the server gets in), but if the app reads this table from the browser it will not work, and the temptation is to &quot;fix&quot; it with an open policy.</dd>
+        <dt>How to fix it</dt><dd><pre>Confirm it is server-only. Otherwise add owner-based policies.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Info</span><h3>34. The app uses the legacy anon key (JWT)</h3></header>
+      <dl>
+        <dt>Where</dt><dd><code>http://127.0.0.1:54321</code></dd>
+        
+        <dt>Why it matters</dt><dd>Not a security flaw. Supabase announced the retirement of anon/service_role keys by end of 2026; migrate before they stop working.</dd>
+        <dt>How to fix it</dt><dd><pre>Create a publishable key (Settings → API Keys), swap it in the app and disable the legacy ones.</pre></dd>
+      </dl>
+    </article>
+  </section>
+
+  <section><h2>User isolation test</h2><p>Two test accounts (A and B) were signed in to check whether each receives the other’s rows.</p>
+      <div class="tabla-ancha"><table><thead><tr><th>Table</th><th>Owner column</th><th>Rows A sees</th><th>Rows B sees</th><th>Read</th><th>Write</th></tr></thead><tbody>
+      <tr><td><code>audit_log</code></td><td>—</td><td>0</td><td>0</td><td class="r-sin_datos">inconclusive (no test data)</td><td class="r-">—</td></tr><tr><td><code>client_directory</code></td><td>—</td><td>6</td><td>6</td><td class="r-sin_dueno">no owner column</td><td class="r-">—</td></tr><tr><td><code>clients</code></td><td><code>user_id</code></td><td>6</td><td>6</td><td class="r-fuga">LEAK</td><td class="r-fuga">LEAK</td></tr><tr><td><code>integration_tokens</code></td><td><code>user_id</code></td><td>2</td><td>2</td><td class="r-fuga">LEAK</td><td class="r-fuga">LEAK</td></tr><tr><td><code>invoices</code></td><td><code>user_id</code></td><td>2</td><td>1</td><td class="r-aislada">isolated</td><td class="r-aislada">isolated</td></tr><tr><td><code>plans</code></td><td>—</td><td>2</td><td>2</td><td class="r-sin_dueno">no owner column</td><td class="r-">—</td></tr><tr><td><code>profiles</code></td><td><code>id</code></td><td>3</td><td>3</td><td class="r-fuga">LEAK</td><td class="r-aislada">isolated</td></tr><tr><td><code>waitlist</code></td><td>—</td><td>0</td><td>0</td><td class="r-sin_datos">inconclusive (no test data)</td><td class="r-">—</td></tr>
+      </tbody></table></div></section>
+  <section><h2>Tables according to the repository migrations</h2><table><thead><tr><th>Table</th><th>RLS</th><th>Policies</th></tr></thead><tbody>
+      <tr><td><code>audit_log</code></td><td class="">yes</td><td>0</td></tr><tr><td><code>clients</code></td><td class="">yes</td><td>1</td></tr><tr><td><code>integration_tokens</code></td><td class="r-fuga">no</td><td>0</td></tr><tr><td><code>invoices</code></td><td class="">yes</td><td>4</td></tr><tr><td><code>plans</code></td><td class="">yes</td><td>1</td></tr><tr><td><code>profiles</code></td><td class="">yes</td><td>2</td></tr><tr><td><code>waitlist</code></td><td class="">yes</td><td>1</td></tr>
+      </tbody></table></section>
+  <section><h2>Checks passed</h2><ul class="ok"><li>.env files and the .git folder are not publicly served.</li><li>The database schema cannot be queried with the public key.</li><li>Without a session no rows are returned from: audit_log, clients, invoices, waitlist. (This does not prove a signed-in user cannot see others’ rows: that is what the isolation test is for.)</li><li>public.invoices: A owns 2 row(s) and B 1; neither account sees the other’s rows.</li><li>1 SQL file(s) read; 7 table(s) in public, 5 with RLS and policies.</li></ul></section>
+  <section><h2>Surface pending manual review</h2><p>Detected elements the tool does not invoke because they may have side effects. They must be reviewed by reading their code.</p><ul><li><b>RPC:</b> <code>is_admin</code></li><li><b>Edge Functions:</b> <code>delete-account</code></li><li><b>Storage:</b> <code>avatars</code>, <code>invoices-pdf</code></li></ul></section>
+  <section><h2>Data protection note</h2><p>Some findings indicate user data may have been accessible to third parties. If the application processes personal data of real users, this may constitute a personal data breach under the GDPR (Art. 33), which requires the controller to assess notifying the supervisory authority within 72 hours. This note is not legal advice: consult your data protection officer or legal counsel.</p></section>
+
+  <section>
+    <h2>Limits of this report</h2>
+    <ul><li>This is a time-boxed review, not a security guarantee or certification.</li><li>Automated checks detect specific classes of flaws (RLS data exposure, published secrets, configuration). They do not cover business logic, payments, or attacks requiring interaction.</li><li>The isolation test is only conclusive for tables where the test accounts own data.</li><li>To check access, the tool downloads database rows (one per table without a session; up to 1,000 per account and table in the isolation test) and analyses them in memory. Their values are not stored in this report or on disk.</li><li>RPC and Edge Functions are not executed: they are reviewed manually.</li><li>Results reflect the state on the stated date. Any later change to tables or policies can introduce new flaws.</li><li>To check whether each table is readable without a session, one row per table was requested with the public key. Received values were discarded; the report only holds counts and column names.</li><li>Detected RPC and Edge Functions are not invoked automatically (they may have side effects). They need manual review.</li><li>Inconclusive for: audit_log, waitlist. Neither test account owns rows there; create data with both accounts and re-run.</li><li>No identifiable owner column in: client_directory (A: 6, B: 6); plans (A: 2, B: 2). Both accounts read rows; confirm manually whether this is shared content.</li><li>The isolation test downloaded 41 full row(s) (cap: 1000 per account and table). They were processed in memory; this report only holds counts and column names.</li><li>The write test ran real UPDATE statements against a local database declared disposable. They set a column to its existing value, but fire triggers and may have modified derived columns (e.g. updated_at).</li><li>Migration analysis reflects what the repository says, not the live database state: changes made from the dashboard do not show up here.</li><li>Code review is pattern-based: it catches typical flaws and does not replace reading the Edge Functions and business logic.</li></ul>
+  </section>
+
+  <footer>Generated with cerrojo · 2026-11-14</footer>
+</main>
+</body>
+</html>

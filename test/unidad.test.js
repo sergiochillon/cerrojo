@@ -181,3 +181,13 @@ test('aislamiento: detecta filas de un tercero aunque no sean de la otra cuenta 
   assert.equal(r.hallazgos.length, 1);
   assert.deepEqual(r.hallazgos[0].datos.lecturas, [{ quien: 'A', ajenas: 1, delOtro: 0 }]);
 });
+
+test('aislamiento: una columna account_id que no contiene usuarios no se toma por dueño', async () => {
+  // Modelo por organización: las filas no llevan el id del usuario. No se puede concluir nada
+  // automáticamente, y desde luego no se debe afirmar una fuga.
+  const fila = (n) => ({ id: n, account_id: '99999999-9999-4999-8999-999999999999', title: `doc ${n}` });
+  const r = await probarAislamiento(opAislamiento(supabaseFalso(() => ({ 'a@x.test': [fila(1), fila(2)], 'b@x.test': [fila(1), fila(2)] }))));
+  assert.equal(r.hallazgos.length, 0);
+  assert.equal(r.matriz[0].resultado, 'sin_dueno');
+  assert.ok(r.notas.some((n) => /Sin columna de dueño identificable/.test(n.es)));
+});

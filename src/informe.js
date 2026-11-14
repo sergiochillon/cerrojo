@@ -246,6 +246,7 @@ export function generarInforme(resultados, meta = {}) {
   th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--suave); }
   tr:last-child td { border-bottom:0; }
   .tabla-ancha { overflow-x:auto; }
+  table code { white-space:nowrap; }
   .r-fuga { color:var(--critica); font-weight:700; } .r-aislada { color:var(--bien); font-weight:600; }
   ul { margin:0 0 12px; padding-left: 20px; } li { margin-bottom:6px; }
   .ok li::marker { content: "✓  "; color: var(--bien); }

@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Informe de auditoría de seguridad — Clientia — entorno local de demostración</title>
+<style>
+  :root { --tinta:#1b1f24; --suave:#5b6470; --linea:#d9dee4; --fondo:#f6f7f9; --papel:#fff;
+    --critica:#b3261e; --alta:#c2570c; --media:#8a6d00; --baja:#2f6f9f; --info:#5b6470; --bien:#1f7a4d; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--fondo); color:var(--tinta); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 20px 64px; }
+  h1 { font-size: 28px; line-height:1.2; margin: 0 0 4px; letter-spacing:-.01em; }
+  h2 { font-size: 19px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--tinta); }
+  h3 { font-size: 16px; margin: 0; }
+  p { margin: 0 0 12px; }
+  code, pre { font: 13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  code { background:#eceff3; padding: 1px 5px; border-radius: 4px; overflow-wrap:anywhere; }
+  pre { background:#12161b; color:#e7ebf0; padding: 12px 14px; border-radius: 6px; white-space: pre-wrap; overflow-wrap:anywhere; margin:0; }
+  .meta { color:var(--suave); margin: 0 0 20px; }
+  .meta b { color:var(--tinta); font-weight:600; }
+  .objetivo { font-size:16px; margin:0 0 6px; overflow-wrap:anywhere; }
+  .chips { display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; margin: 16px 0; }
+  .chip { background:var(--papel); border:1px solid var(--linea); border-top:4px solid var(--c); border-radius:6px; padding:10px 12px; }
+  .chip b { display:block; font-size:24px; line-height:1.1; font-variant-numeric: tabular-nums; }
+  .chip span { color:var(--suave); font-size:13px; }
+  .g-critica { --c:var(--critica); } .g-alta { --c:var(--alta); } .g-media { --c:var(--media); } .g-baja { --c:var(--baja); } .g-info { --c:var(--info); }
+  .veredicto { background:var(--papel); border:1px solid var(--linea); border-left:4px solid var(--tinta); border-radius:6px; padding:12px 16px; }
+  .hallazgo { background:var(--papel); border:1px solid var(--linea); border-left:5px solid var(--c); border-radius:6px; padding:16px 18px; margin: 0 0 14px; break-inside: avoid; }
+  .hallazgo header { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; margin-bottom:10px; }
+  .etq { background:var(--c); color:#fff; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; }
+  dl { margin:0; display:grid; grid-template-columns: 150px 1fr; gap: 8px 14px; }
+  dt { color:var(--suave); font-size:13px; padding-top:2px; }
+  dd { margin:0; min-width:0; }
+  table { width:100%; border-collapse:collapse; background:var(--papel); border:1px solid var(--linea); border-radius:6px; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--suave); }
+  tr:last-child td { border-bottom:0; }
+  .tabla-ancha { overflow-x:auto; }
+  table code { white-space:nowrap; }
+  .r-fuga { color:var(--critica); font-weight:700; } .r-aislada { color:var(--bien); font-weight:600; }
+  ul { margin:0 0 12px; padding-left: 20px; } li { margin-bottom:6px; }
+  .ok li::marker { content: "✓  "; color: var(--bien); }
+  footer { margin-top:48px; padding-top:12px; border-top:1px solid var(--linea); color:var(--suave); font-size:13px; }
+  @media (max-width: 640px) { .chips { grid-template-columns: repeat(2, 1fr); } dl { grid-template-columns: 1fr; gap:2px 0; } dt { padding-top:8px; } }
+  @media print { body { background:#fff; font-size:12px; } main { padding:0; max-width:none; } .hallazgo, .chip, table, .veredicto { box-shadow:none; } h2 { break-after: avoid; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Informe de auditoría de seguridad</h1>
+  <p class="objetivo"><code>Clientia — entorno local de demostración</code></p>
+  <p class="meta">Fecha: <b>2026-11-14</b> · Preparado para: <b>Clientia (app ficticia de demostración)</b> · Auditoría realizada por: <b>cerrojo · demo</b></p>
+
+  <section>
+    <h2>Resumen</h2>
+    <div class="chips"><div class="chip g-critica"><b>7</b><span>Crítica</span></div><div class="chip g-alta"><b>9</b><span>Alta</span></div><div class="chip g-media"><b>10</b><span>Media</span></div><div class="chip g-baja"><b>4</b><span>Baja</span></div><div class="chip g-info"><b>4</b><span>Informativa</span></div></div>
+    <p class="veredicto">Hay hallazgos de gravedad crítica o alta. Recomendación: corregirlos antes de abrir la aplicación a usuarios reales, o cuanto antes si ya está en uso.</p>
+  </section>
+
+  <section>
+    <h2>Alcance: qué se ha comprobado</h2>
+    <div class="tabla-ancha"><table><tbody><tr><td>Aplicación desplegada (sin sesión)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-14 23:22 UTC · 21 peticiones HTTP</td></tr><tr><td>Aislamiento entre usuarios (con dos cuentas de prueba)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-14 23:22 UTC · 26 peticiones HTTP</td></tr><tr><td>Repositorio (migraciones SQL y código)</td><td><code>app-vulnerable</code></td><td>2026-11-14 23:22 UTC</td></tr></tbody></table></div>
+    <p style="margin-top:10px"><b>Autorización:</b> Quien ejecutó la herramienta declaró ser titular de la aplicación o contar con autorización escrita de su titular.</p>
+  </section>
+
+  <section>
+    <h2>Hallazgos (34)</h2>
+    
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>1. Un usuario puede modificar filas de otros usuarios</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.clients</code></dd>
+        <dt>Qué se ha observado</dt><dd>Columna dueño: user_id. Resultado: la cuenta A actualizó 3 fila(s) de la otra; la cuenta B actualizó 2 fila(s) de la otra. El UPDATE asignó a la columna el valor que ya tenía, pero es una escritura real: dispara triggers y puede haber cambiado columnas derivadas.</dd>
+        <dt>Por qué importa</dt><dd>Comprobado en una base local desechable: una cuenta de prueba ejecutó con éxito un UPDATE sobre filas de la otra. Un usuario puede alterar o sabotear datos ajenos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Limita update/delete al dueño:
+create policy &quot;modificar lo propio&quot; on public.clients for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>2. Un usuario puede modificar filas de otros usuarios</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>Qué se ha observado</dt><dd>Columna dueño: user_id. Resultado: la cuenta A actualizó 1 fila(s) de la otra; la cuenta B actualizó 1 fila(s) de la otra. El UPDATE asignó a la columna el valor que ya tenía, pero es una escritura real: dispara triggers y puede haber cambiado columnas derivadas.</dd>
+        <dt>Por qué importa</dt><dd>Comprobado en una base local desechable: una cuenta de prueba ejecutó con éxito un UPDATE sobre filas de la otra. Un usuario puede alterar o sabotear datos ajenos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Limita update/delete al dueño:
+create policy &quot;modificar lo propio&quot; on public.integration_tokens for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>3. Un usuario puede leer filas de otros usuarios</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>Qué se ha observado</dt><dd>Columna dueño: user_id. Resultado: la cuenta A recibe 1 fila(s) que no son suyas (1 de la otra cuenta de prueba); la cuenta B recibe 1 fila(s) que no son suyas (1 de la otra cuenta de prueba). Columnas de la tabla: id, user_id, provider, access_token, created_at. Las filas se descargaron para compararlas; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Comprobado con dos cuentas de prueba: una de ellas recibe filas que pertenecen a la otra. Cualquier usuario registrado puede ver datos ajenos. RLS puede estar &quot;activado&quot; y aun así permitirlo.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Sustituye la política de lectura por una que compare con el dueño:
+drop policy if exists &quot;&lt;política actual&gt;&quot; on public.integration_tokens;
+create policy &quot;leer lo propio&quot; on public.integration_tokens for select to authenticated using ((select auth.uid()) = user_id);
+Vuelve a ejecutar esta prueba después.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>4. Variable de entorno pública con nombre de secreto</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>src/integrations/supabase/client.ts</code></dd>
+        <dt>Qué se ha observado</dt><dd>VITE_OPENAI_API_KEY — src/integrations/supabase/client.ts:10</dd>
+        <dt>Por qué importa</dt><dd>Las variables con prefijo VITE_, NEXT_PUBLIC_ o similar se incrustan en el JavaScript que recibe cada visitante.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Quita el prefijo público, usa la variable solo en servidor y rota el valor.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>5. Tabla sin RLS activado</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>Qué se ha observado</dt><dd>Creada en supabase/migrations/20260901100000_esquema_inicial.sql. Columnas: id, user_id, provider, access_token, created_at.</dd>
+        <dt>Por qué importa</dt><dd>Sin RLS, cualquier petición con la clave pública puede leer y escribir la tabla entera si tiene permisos de API (lo habitual en proyectos anteriores a 2026).</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>alter table public.integration_tokens enable row level security;
+Después crea las políticas mínimas que la app necesite (sin políticas, solo el servidor podrá acceder).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>6. Tabla legible sin iniciar sesión</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.integration_tokens</code></dd>
+        <dt>Qué se ha observado</dt><dd>2 fila(s) visibles sin sesión. Columnas: id, user_id, provider, access_token, created_at. Categorías sensibles por nombre de columna: credenciales. Para comprobarlo se descargó una fila; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera con la URL y la clave pública (ambas están en la web) puede descargar estas filas. Si la tabla no es deliberadamente pública, es una fuga de datos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa RLS y limita la lectura al dueño de cada fila:
+alter table public.integration_tokens enable row level security;
+create policy &quot;leer lo propio&quot; on public.integration_tokens for select to authenticated using ((select auth.uid()) = user_id);
+Si la tabla debe ser pública, expón solo las columnas necesarias mediante una vista.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-critica">
+      <header><span class="etq">Crítica</span><h3>7. Secreto de un servicio externo publicado en el navegador</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>/assets/index-4f3a9c.js</code></dd>
+        <dt>Qué se ha observado</dt><dd>Clave de API de OpenAI en /assets/index-4f3a9c.js: sk-pro…Zwww (48 caracteres)</dd>
+        <dt>Por qué importa</dt><dd>Una clave secreta en el código del navegador es pública. Puede usarse a tu costa (consumo de API, cobros) o para acceder a datos de ese servicio.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Revoca la clave en el panel del proveedor y crea otra. Mueve la llamada a una Edge Function o a tu servidor y guarda la clave como secreto de servidor.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>8. Un usuario puede leer filas de otros usuarios</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.clients</code></dd>
+        <dt>Qué se ha observado</dt><dd>Columna dueño: user_id. Resultado: la cuenta A recibe 4 fila(s) que no son suyas (3 de la otra cuenta de prueba); la cuenta B recibe 3 fila(s) que no son suyas (2 de la otra cuenta de prueba). Columnas de la tabla: id, user_id, name, email, phone, notes, created_at. Las filas se descargaron para compararlas; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Comprobado con dos cuentas de prueba: una de ellas recibe filas que pertenecen a la otra. Cualquier usuario registrado puede ver datos ajenos. RLS puede estar &quot;activado&quot; y aun así permitirlo.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Sustituye la política de lectura por una que compare con el dueño:
+drop policy if exists &quot;&lt;política actual&gt;&quot; on public.clients;
+create policy &quot;leer lo propio&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
+Vuelve a ejecutar esta prueba después.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>9. Un usuario puede leer filas de otros usuarios</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.profiles</code></dd>
+        <dt>Qué se ha observado</dt><dd>Columna dueño: id. Resultado: la cuenta A recibe 2 fila(s) que no son suyas (1 de la otra cuenta de prueba); la cuenta B recibe 2 fila(s) que no son suyas (1 de la otra cuenta de prueba). Columnas de la tabla: id, email, full_name, role, plan, created_at. Las filas se descargaron para compararlas; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Comprobado con dos cuentas de prueba: una de ellas recibe filas que pertenecen a la otra. Cualquier usuario registrado puede ver datos ajenos. RLS puede estar &quot;activado&quot; y aun así permitirlo.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Sustituye la política de lectura por una que compare con el dueño:
+drop policy if exists &quot;&lt;política actual&gt;&quot; on public.profiles;
+create policy &quot;leer lo propio&quot; on public.profiles for select to authenticated using ((select auth.uid()) = id);
+Vuelve a ejecutar esta prueba después.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>10. Edge Function usa la clave de servicio sin comprobar quién llama</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>supabase/functions/delete-account/index.ts</code></dd>
+        <dt>Qué se ha observado</dt><dd>supabase/functions/delete-account/index.ts: usa SERVICE_ROLE y no se ha encontrado ninguna comprobación de identidad (heurística; revisar a mano).</dd>
+        <dt>Por qué importa</dt><dd>La función actúa con permisos totales. Si no identifica al usuario ni comprueba que el recurso es suyo, cualquiera puede pedirle que lea o modifique datos ajenos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Obtén el usuario con supabase.auth.getUser(token) al principio y filtra todas las consultas por su id; no aceptes un user_id enviado en el cuerpo.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>11. El usuario puede editar una fila propia que contiene columnas de privilegio</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.profiles</code></dd>
+        <dt>Qué se ha observado</dt><dd>Columnas: role, plan. Política de modificación: &quot;Users can update own profile&quot;. No se ha detectado restricción por columna ni disparador en las migraciones.</dd>
+        <dt>Por qué importa</dt><dd>RLS filtra filas, no columnas. Si la política de update permite al usuario modificar su fila y esa fila guarda su rol, plan o saldo, puede cambiarlos desde la consola del navegador.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Mueve esas columnas a otra tabla sin política de update, o revoca el update de columna:
+revoke update on public.profiles from authenticated;
+grant update (&lt;columnas inofensivas&gt;) on public.profiles to authenticated;</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>12. Política que permite leer toda la tabla a cualquiera</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.profiles</code></dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Profiles are viewable by everyone&quot; (select, roles: public) con condición: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>La condición es siempre verdadera y aplica también a visitantes sin sesión. Solo es correcto en tablas de contenido realmente público.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Si no es contenido público:
+drop policy &quot;Profiles are viewable by everyone&quot; on public.profiles;
+create policy &quot;leer lo propio&quot; on public.profiles for select to authenticated using ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>13. Política basada en metadatos que el usuario puede editar</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.invoices</code></dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Admins read all invoices&quot;: (auth.jwt() -&gt; &#39;user_metadata&#39; -&gt;&gt; &#39;role&#39;) = &#39;admin&#39;. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>user_metadata (raw_user_meta_data) lo puede modificar el propio usuario con supabase.auth.updateUser(). Si una política concede permisos según ese campo, cualquiera puede declararse administrador.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Guarda los roles en una tabla propia protegida por RLS o en app_metadata (solo editable desde servidor) y consulta eso en la política.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>14. Política que solo exige estar registrado</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.clients</code></dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Authenticated users can manage clients&quot; (all, roles: authenticated) con condición: auth.uid() is not null. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Es el fallo más frecuente: RLS aparece como &quot;activado&quot; en todos los paneles, pero cualquier usuario registrado accede a las filas de todos. Registrarse suele ser gratis.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>drop policy &quot;Authenticated users can manage clients&quot; on public.clients;
+create policy &quot;solo lo propio&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
+Verifícalo con la prueba de aislamiento (cerrojo aislamiento).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>15. Tabla legible sin iniciar sesión</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.client_directory</code></dd>
+        <dt>Qué se ha observado</dt><dd>6 fila(s) visibles sin sesión. Columnas: id, name, email, phone, owner_name. Categorías sensibles por nombre de columna: contacto. Para comprobarlo se descargó una fila; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera con la URL y la clave pública (ambas están en la web) puede descargar estas filas. Si la tabla no es deliberadamente pública, es una fuga de datos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa RLS y limita la lectura al dueño de cada fila:
+alter table public.client_directory enable row level security;
+create policy &quot;leer lo propio&quot; on public.client_directory for select to authenticated using ((select auth.uid()) = user_id);
+Si la tabla debe ser pública, expón solo las columnas necesarias mediante una vista.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-alta">
+      <header><span class="etq">Alta</span><h3>16. Tabla legible sin iniciar sesión</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.profiles</code></dd>
+        <dt>Qué se ha observado</dt><dd>3 fila(s) visibles sin sesión. Columnas: id, email, full_name, role, plan, created_at. Categorías sensibles por nombre de columna: contacto, personal. Para comprobarlo se descargó una fila; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera con la URL y la clave pública (ambas están en la web) puede descargar estas filas. Si la tabla no es deliberadamente pública, es una fuga de datos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa RLS y limita la lectura al dueño de cada fila:
+alter table public.profiles enable row level security;
+create policy &quot;leer lo propio&quot; on public.profiles for select to authenticated using ((select auth.uid()) = user_id);
+Si la tabla debe ser pública, expón solo las columnas necesarias mediante una vista.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>17. Permisos de administrador decididos en el navegador</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>src/hooks/useAdmin.ts</code></dd>
+        <dt>Qué se ha observado</dt><dd>src/hooks/useAdmin.ts:3 — localStorage.getItem(&#39;isAdmin&#39;)</dd>
+        <dt>Por qué importa</dt><dd>Lo que se comprueba en el navegador se puede cambiar desde la consola. Ocultar un botón no protege los datos: la autorización real debe estar en RLS o en el servidor.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Mantén la comprobación visual si quieres, pero asegúrate de que cada tabla y función de administración verifica el rol en servidor.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>18. Edge Function con verificación de JWT desactivada</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>supabase/config.toml</code></dd>
+        <dt>Qué se ha observado</dt><dd>[functions.delete-account] verify_jwt = false — supabase/config.toml</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera en internet puede invocarla. Es correcto para webhooks que validan su propia firma; peligroso si la función confía en quien llama.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa verify_jwt o valida dentro de la función (firma del webhook o supabase.auth.getUser con el token recibido).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>19. Bucket de almacenamiento creado como público</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>storage/invoices-pdf</code></dd>
+        <dt>Qué se ha observado</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera con la URL de un archivo puede descargarlo sin sesión. Correcto para avatares o imágenes públicas; un problema para documentos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Si guarda archivos privados: update storage.buckets set public = false where id = &#39;invoices-pdf&#39;; y sirve los archivos con URLs firmadas.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>20. Función SECURITY DEFINER sin search_path fijo</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.is_admin</code></dd>
+        <dt>Qué se ha observado</dt><dd>public.is_admin — supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Se ejecuta con los permisos de su creador y se salta RLS. Sin search_path fijo puede ser engañada para ejecutar objetos de otro esquema; además, si está en public es invocable por API.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Añade &quot;set search_path = &#39;&#39;&quot; y califica los nombres con esquema. Comprueba dentro de la función quién llama (auth.uid()). Revoca execute a anon si no es necesario.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>21. Política que permite escribir sin restricción</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.waitlist</code></dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Anyone can join the waitlist&quot; (insert, roles: anon, authenticated) con condición: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Con una condición siempre verdadera en insert/update/delete, quien alcance la tabla puede crear, alterar o borrar filas de cualquiera.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>drop policy &quot;Anyone can join the waitlist&quot; on public.waitlist;
+Crea políticas separadas por operación con using/with check ((select auth.uid()) = user_id).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>22. Política que permite leer toda la tabla a cualquiera</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.plans</code></dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Plans are public&quot; (select, roles: public) con condición: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>La condición es siempre verdadera y aplica también a visitantes sin sesión. Solo es correcto en tablas de contenido realmente público.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Si no es contenido público:
+drop policy &quot;Plans are public&quot; on public.plans;
+create policy &quot;leer lo propio&quot; on public.plans for select to authenticated using ((select auth.uid()) = user_id);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>23. Vista que puede saltarse RLS</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.client_directory</code></dd>
+        <dt>Qué se ha observado</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Por defecto una vista consulta las tablas con los permisos de su creador, ignorando las políticas RLS del usuario que la lee.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>create or replace view public.client_directory with (security_invoker = on) as ...</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>24. Archivos de un bucket listables sin iniciar sesión</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>storage/invoices-pdf</code></dd>
+        <dt>Qué se ha observado</dt><dd>Se listaron 2 objeto(s) sin sesión (solo se contó, no se descargó nada).</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera puede enumerar los archivos subidos (y normalmente descargarlos). Es grave si contienen documentos o imágenes privadas.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Crea políticas en storage.objects que limiten select a la carpeta del usuario:
+create policy &quot;leer lo propio&quot; on storage.objects for select to authenticated using (bucket_id = &#39;invoices-pdf&#39; and (storage.foldername(name))[1] = (select auth.uid())::text);</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>25. El registro no exige confirmar el correo</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>http://127.0.0.1:54321/auth/v1/settings</code></dd>
+        <dt>Qué se ha observado</dt><dd>El endpoint público de configuración indica mailer_autoconfirm = true.</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera puede crear cuentas con correos ajenos o inventados. Combinado con políticas que solo exigen &quot;estar autenticado&quot;, equivale a acceso público.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa &quot;Confirm email&quot; en Authentication → Providers → Email.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-media">
+      <header><span class="etq">Media</span><h3>26. Tabla legible sin iniciar sesión</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.plans</code></dd>
+        <dt>Qué se ha observado</dt><dd>2 fila(s) visibles sin sesión. Columnas: id, title, monthly_price. Categorías sensibles por nombre de columna: ninguna detectada por nombre. Para comprobarlo se descargó una fila; sus valores no se han guardado.</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera con la URL y la clave pública (ambas están en la web) puede descargar estas filas. Si la tabla no es deliberadamente pública, es una fuga de datos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa RLS y limita la lectura al dueño de cada fila:
+alter table public.plans enable row level security;
+create policy &quot;leer lo propio&quot; on public.plans for select to authenticated using ((select auth.uid()) = user_id);
+Si la tabla debe ser pública, expón solo las columnas necesarias mediante una vista.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Baja</span><h3>27. Edge Function con CORS abierto a cualquier origen</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>supabase/functions/delete-account/index.ts</code></dd>
+        <dt>Qué se ha observado</dt><dd>supabase/functions/delete-account/index.ts</dd>
+        <dt>Por qué importa</dt><dd>Cualquier web puede llamar a la función desde el navegador de un usuario. Es la plantilla por defecto; conviene restringirla en funciones sensibles.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Sustituye &quot;*&quot; por el dominio de tu aplicación.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Baja</span><h3>28. HTML insertado sin sanear</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>src/pages/ClientNotes.tsx</code></dd>
+        <dt>Qué se ha observado</dt><dd>src/pages/ClientNotes.tsx:3</dd>
+        <dt>Por qué importa</dt><dd>Si el contenido viene de usuarios, permite ejecutar JavaScript en el navegador de otros (XSS) y robar su sesión.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Sanea con DOMPurify antes de insertar, o renderiza como texto.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Baja</span><h3>29. Faltan cabeceras de seguridad HTTP</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>http://127.0.0.1:54321</code></dd>
+        <dt>Qué se ha observado</dt><dd>Ausentes: Content-Security-Policy, X-Content-Type-Options, Referrer-Policy, X-Frame-Options / frame-ancestors</dd>
+        <dt>Por qué importa</dt><dd>Son una segunda línea de defensa frente a XSS, clickjacking y degradación a HTTP. Su ausencia no es explotable por sí sola.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Añádelas en la configuración del alojamiento (Vercel/Netlify/Cloudflare): Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, Referrer-Policy y frame-ancestors.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-baja">
+      <header><span class="etq">Baja</span><h3>30. Mapas de código fuente públicos</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>/assets/index-4f3a9c.js.map</code></dd>
+        <dt>Qué se ha observado</dt><dd>1 mapa(s) accesible(s), p. ej. /assets/index-4f3a9c.js.map</dd>
+        <dt>Por qué importa</dt><dd>Permiten leer el código original con comentarios y nombres. No es un fallo por sí solo, pero facilita encontrar otros.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Desactiva los source maps en producción (en Vite: build.sourcemap = false) o no los publiques.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Informativa</span><h3>31. Edge Function con verificación de JWT desactivada</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>supabase/config.toml</code></dd>
+        <dt>Qué se ha observado</dt><dd>[functions.stripe-webhook] verify_jwt = false — supabase/config.toml</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera en internet puede invocarla. Es correcto para webhooks que validan su propia firma; peligroso si la función confía en quien llama.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Activa verify_jwt o valida dentro de la función (firma del webhook o supabase.auth.getUser con el token recibido).</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Informativa</span><h3>32. Bucket de almacenamiento creado como público</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>storage/avatars</code></dd>
+        <dt>Qué se ha observado</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Cualquiera con la URL de un archivo puede descargarlo sin sesión. Correcto para avatares o imágenes públicas; un problema para documentos.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Si guarda archivos privados: update storage.buckets set public = false where id = &#39;avatars&#39;; y sirve los archivos con URLs firmadas.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Informativa</span><h3>33. RLS activado sin ninguna política</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>public.audit_log</code></dd>
+        <dt>Qué se ha observado</dt><dd>supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Por qué importa</dt><dd>Es seguro (nadie accede salvo el servidor), pero si la app lee esta tabla desde el navegador no funcionará, y la tentación es &quot;arreglarlo&quot; con una política abierta.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Confirma que solo se usa desde servidor. Si no, añade políticas por dueño.</pre></dd>
+      </dl>
+    </article>
+    <article class="hallazgo g-info">
+      <header><span class="etq">Informativa</span><h3>34. La app usa la clave anónima antigua (JWT)</h3></header>
+      <dl>
+        <dt>Dónde</dt><dd><code>http://127.0.0.1:54321</code></dd>
+        
+        <dt>Por qué importa</dt><dd>No es un fallo de seguridad. Supabase ha anunciado la retirada de las claves anon/service_role para finales de 2026; conviene migrar antes de que dejen de funcionar.</dd>
+        <dt>Cómo arreglarlo</dt><dd><pre>Crea una clave publishable (Settings → API Keys), sustitúyela en la app y desactiva las antiguas.</pre></dd>
+      </dl>
+    </article>
+  </section>
+
+  <section><h2>Prueba de aislamiento entre usuarios</h2><p>Se inició sesión con dos cuentas de prueba (A y B) y se comprobó si cada una recibe filas de la otra.</p>
+      <div class="tabla-ancha"><table><thead><tr><th>Tabla</th><th>Columna dueño</th><th>Filas que ve A</th><th>Filas que ve B</th><th>Lectura</th><th>Escritura</th></tr></thead><tbody>
+      <tr><td><code>audit_log</code></td><td>—</td><td>0</td><td>0</td><td class="r-sin_datos">no concluyente (sin datos de prueba)</td><td class="r-">—</td></tr><tr><td><code>client_directory</code></td><td>—</td><td>6</td><td>6</td><td class="r-sin_dueno">sin columna de dueño</td><td class="r-">—</td></tr><tr><td><code>clients</code></td><td><code>user_id</code></td><td>6</td><td>6</td><td class="r-fuga">FUGA</td><td class="r-fuga">FUGA</td></tr><tr><td><code>integration_tokens</code></td><td><code>user_id</code></td><td>2</td><td>2</td><td class="r-fuga">FUGA</td><td class="r-fuga">FUGA</td></tr><tr><td><code>invoices</code></td><td><code>user_id</code></td><td>2</td><td>1</td><td class="r-aislada">aislada</td><td class="r-aislada">aislada</td></tr><tr><td><code>plans</code></td><td>—</td><td>2</td><td>2</td><td class="r-sin_dueno">sin columna de dueño</td><td class="r-">—</td></tr><tr><td><code>profiles</code></td><td><code>id</code></td><td>3</td><td>3</td><td class="r-fuga">FUGA</td><td class="r-aislada">aislada</td></tr><tr><td><code>waitlist</code></td><td>—</td><td>0</td><td>0</td><td class="r-sin_datos">no concluyente (sin datos de prueba)</td><td class="r-">—</td></tr>
+      </tbody></table></div></section>
+  <section><h2>Tablas según las migraciones del repositorio</h2><table><thead><tr><th>Tabla</th><th>RLS</th><th>Políticas</th></tr></thead><tbody>
+      <tr><td><code>audit_log</code></td><td class="">sí</td><td>0</td></tr><tr><td><code>clients</code></td><td class="">sí</td><td>1</td></tr><tr><td><code>integration_tokens</code></td><td class="r-fuga">no</td><td>0</td></tr><tr><td><code>invoices</code></td><td class="">sí</td><td>4</td></tr><tr><td><code>plans</code></td><td class="">sí</td><td>1</td></tr><tr><td><code>profiles</code></td><td class="">sí</td><td>2</td></tr><tr><td><code>waitlist</code></td><td class="">sí</td><td>1</td></tr>
+      </tbody></table></section>
+  <section><h2>Comprobaciones superadas</h2><ul class="ok"><li>Los archivos .env y la carpeta .git no se sirven públicamente.</li><li>El esquema de la base de datos no se puede consultar con la clave pública.</li><li>Sin sesión no se obtiene ninguna fila de: audit_log, clients, invoices, waitlist. (Esto no prueba que un usuario registrado no vea filas ajenas: para eso está la prueba de aislamiento.)</li><li>public.invoices: A tiene 2 fila(s) propias y B 1; ninguna cuenta ve filas de la otra.</li><li>1 archivo(s) SQL leídos; 7 tabla(s) en public, 5 con RLS y políticas.</li></ul></section>
+  <section><h2>Superficie pendiente de revisión manual</h2><p>Elementos detectados que la herramienta no invoca porque podrían tener efectos. Deben revisarse leyendo su código.</p><ul><li><b>RPC:</b> <code>is_admin</code></li><li><b>Edge Functions:</b> <code>delete-account</code></li><li><b>Storage:</b> <code>avatars</code>, <code>invoices-pdf</code></li></ul></section>
+  <section><h2>Nota sobre protección de datos</h2><p>Algunos hallazgos indican que datos de usuarios han podido ser accesibles para terceros. Si la aplicación trata datos personales de usuarios reales, esto puede constituir una brecha de seguridad en el sentido del RGPD (art. 33), que obliga al responsable a valorar su notificación a la autoridad de control en un plazo de 72 horas. Esta nota no es asesoramiento jurídico: consulta con tu delegado de protección de datos o asesor legal.</p></section>
+
+  <section>
+    <h2>Límites de este informe</h2>
+    <ul><li>Es una revisión acotada en el tiempo, no una garantía de seguridad ni una certificación.</li><li>Las comprobaciones automáticas detectan clases concretas de fallos (exposición de datos por RLS, secretos publicados, configuración). No cubren la lógica de negocio, pagos, ni ataques que requieran interacción.</li><li>La prueba de aislamiento solo es concluyente en tablas donde las cuentas de prueba tienen datos propios.</li><li>Para comprobar el acceso, la herramienta descarga filas de la base de datos (una por tabla sin sesión; hasta 1.000 por cuenta y tabla en la prueba de aislamiento) y las analiza en memoria. Sus valores no se guardan en este informe ni en disco.</li><li>Las funciones RPC y Edge Functions no se ejecutan: su revisión es manual.</li><li>El resultado refleja el estado en la fecha indicada. Cada cambio posterior en tablas o políticas puede introducir fallos nuevos.</li><li>Para saber si cada tabla es legible sin sesión se pidió una fila por tabla con la clave pública. Los valores recibidos se descartaron; en el informe solo constan recuentos y nombres de columna.</li><li>Las funciones RPC y Edge Functions detectadas no se invocan automáticamente (podrían tener efectos). Deben revisarse a mano.</li><li>No concluyente en: audit_log, waitlist. Ninguna de las cuentas de prueba tiene filas propias ahí; crea datos con ambas cuentas y repite la prueba.</li><li>Sin columna de dueño identificable en: client_directory (A: 6, B: 6); plans (A: 2, B: 2). Ambas cuentas leen filas; hay que confirmar a mano si es contenido común.</li><li>Para la prueba de aislamiento se descargaron 41 fila(s) completas (tope: 1000 por cuenta y tabla). Se procesaron en memoria; en este informe solo constan recuentos y nombres de columna.</li><li>La prueba de escritura ejecutó sentencias UPDATE reales sobre una base local declarada desechable. Asignan a una columna el valor que ya tenía, pero disparan triggers y pueden haber modificado columnas derivadas (p. ej. updated_at).</li><li>El análisis de migraciones refleja lo que dice el repositorio, no el estado real de la base de datos: cambios hechos desde el panel no aparecen aquí.</li><li>La revisión de código usa patrones: detecta fallos típicos, no sustituye a leer las Edge Functions y la lógica de negocio.</li></ul>
+  </section>
+
+  <footer>Generado con cerrojo · 2026-11-14</footer>
+</main>
+</body>
+</html>

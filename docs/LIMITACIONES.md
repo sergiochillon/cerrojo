@@ -20,7 +20,10 @@ Es la limitación principal.
   obtenido antes de esa validación no significa nada.**
 
 Qué falta: ejecutarla contra un proyecto gratuito propio, con tablas buenas y malas a
-propósito, y corregir lo que no coincida. Ver "Antes de ofrecerlo a un cliente" al final.
+propósito, y corregir lo que no coincida. El procedimiento está preparado y ensayado en local
+en [../validacion/GUION.md](../validacion/GUION.md), pero **no se ha ejecutado**: lo tiene que
+hacer una persona, a mano, en un proyecto de pruebas. Ese guion detalla también qué seguirá
+sin demostrarse después de pasarlo.
 
 ## 2. Qué clases de fallo cubre y cuáles no
 
@@ -120,15 +123,16 @@ fuera:
 - La nota de protección de datos del informe es informativa, no asesoramiento jurídico.
 - No se ha medido el rendimiento con aplicaciones grandes (muchos archivos JavaScript o
   cientos de tablas).
-- No ha habido revisión independiente del código. Antigravity no estaba conectado al entorno
-  donde se construyó.
+- La única revisión independiente ha sido una pasada automática de Antigravity sobre el guion
+  de validación y las salvaguardas de red. No ha habido revisión humana ni auditoría del resto
+  del código.
 
 ## Antes de ofrecerlo a un cliente
 
-1. Crear un proyecto gratuito de Supabase **propio**, con datos ficticios, que reproduzca los
-   fallos de la demo y también tablas correctas.
-2. Ejecutar `web` y `aislamiento` contra él y comparar con lo esperado, tabla por tabla.
-   Corregir las diferencias con la emulación (punto 1).
+1. Seguir [../validacion/GUION.md](../validacion/GUION.md): crear un proyecto gratuito de
+   Supabase **propio** con datos sintéticos y ejecutar el validador de solo lectura.
+2. Corregir en `src/supabase.js` cada diferencia con la emulación, con una prueba que la
+   reproduzca, y repetir hasta que todo coincida.
 3. Repetir con las claves nuevas (`sb_publishable_`) y con las antiguas (JWT `anon`).
 4. Probar un caso con modelo de organización o equipo y decidir cómo tratarlo.
 5. Hacer una auditoría completa, gratis y con permiso, de una app real de alguien conocido,

@@ -12,6 +12,21 @@ export function decodificarJwt(token) {
   }
 }
 
+/**
+ * ¿Es una clave que NO debe usarse desde fuera? (sb_secret_…, o un JWT cuyo rol no es "anon":
+ * service_role, supabase_admin…). Estas claves se saltan RLS: con ellas todo parecería una
+ * fuga, y no hay ningún motivo para dárselas a esta herramienta.
+ */
+export function esClaveSecreta(clave) {
+  const s = String(clave ?? '');
+  if (s.startsWith('sb_secret_')) return true;
+  const rol = decodificarJwt(s)?.carga?.role;
+  return Boolean(rol) && rol !== 'anon';
+}
+
+export const AVISO_CLAVE_SECRETA =
+  'La clave indicada es SECRETA (sb_secret_… o un JWT con rol distinto de "anon"). cerrojo solo trabaja con la clave pública. No se ha hecho ninguna petición. Si esa clave ha quedado en un archivo o en el historial de la terminal, revócala en el panel de Supabase.';
+
 /** Enmascara un secreto para poder citarlo en un informe sin revelarlo. */
 export function enmascarar(valor) {
   const s = String(valor);

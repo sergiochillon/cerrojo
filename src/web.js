@@ -5,7 +5,7 @@ import { Cliente } from './http.js';
 import { extraer, fusionar } from './extraer.js';
 import { Supabase } from './supabase.js';
 import { hallazgo } from './catalogo.js';
-import { ahoraIso, categoriasSensibles, gravedadPorCategorias, esIdentificador } from './util.js';
+import { ahoraIso, categoriasSensibles, gravedadPorCategorias, esIdentificador, esClaveSecreta, AVISO_CLAVE_SECRETA } from './util.js';
 
 const CABECERAS_ESPERADAS = [
   ['content-security-policy', 'Content-Security-Policy'],
@@ -21,6 +21,7 @@ const CABECERAS_ESPERADAS = [
 export async function auditarWeb(urlApp, op = {}) {
   const cliente = op.cliente ?? new Cliente();
   const avisar = op.avisar ?? (() => {});
+  if (op.clave && esClaveSecreta(op.clave)) throw new Error(AVISO_CLAVE_SECRETA);
   const inicio = ahoraIso();
   const hallazgos = [];
   const superadas = [];

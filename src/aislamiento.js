@@ -17,7 +17,7 @@
 import { Cliente, esLoopback } from './http.js';
 import { Supabase } from './supabase.js';
 import { hallazgo } from './catalogo.js';
-import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esIdentificador } from './util.js';
+import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esIdentificador, esClaveSecreta, AVISO_CLAVE_SECRETA } from './util.js';
 
 /**
  * @param {{
@@ -34,6 +34,7 @@ export async function probarAislamiento(op) {
   const cliente = op.cliente ?? new Cliente();
   const avisar = op.avisar ?? (() => {});
   const limite = Math.min(Math.max(Math.trunc(Number(op.limite ?? LIMITE_MAXIMO)) || LIMITE_MAXIMO, 1), LIMITE_MAXIMO);
+  if (esClaveSecreta(op.clave)) throw new Error(AVISO_CLAVE_SECRETA);
   // La escritura se decide antes de hacer ninguna petición y no depende de quien llame a esta
   // función: fuera de una base local declarada desechable, no se ejecuta.
   if (op.probarEscritura && !(esLoopback(op.supabaseUrl) && op.baseDesechable === true)) {

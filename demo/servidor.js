@@ -44,7 +44,12 @@ const PRELUDIO = `
     $$ select (string_to_array(name, '/'))[1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)] $$;
   grant usage on schema public, auth, storage to anon, authenticated, service_role;
   grant select on storage.objects, storage.buckets to anon, authenticated;
-  -- Comportamiento histórico de Supabase: las tablas de public quedan expuestas a la API.
+`;
+
+// Comportamiento histórico de Supabase: toda tabla nueva de public quedaba expuesta a la API.
+// Desde octubre de 2026 ya no es así (hacen falta GRANT explícitos); la app ficticia imita
+// un proyecto antiguo, y el ensayo del guion de validación lo desactiva.
+const PERMISOS_HISTORICOS = `
   alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
@@ -104,7 +109,14 @@ const esId = (s) => /^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(s);
 
 /**
  * Arranca la demo.
- * @param {{puerto?: number, corregida?: boolean}} [op] `corregida` aplica además los arreglos.
+ * @param {{
+ *   puerto?: number, corregida?: boolean,
+ *   sql?: string[], usuarios?: Record<string, {id: string, correo: string, contrasena: string}>,
+ *   sinPermisosPorDefecto?: boolean
+ * }} [op]
+ * `corregida` aplica además los arreglos. Con `sql` no se carga la app ficticia: se crean las
+ * cuentas de `usuarios` y se ejecutan esos scripts (así se ensaya en local el guion de
+ * validación/, con `sinPermisosPorDefecto` para imitar un proyecto Supabase actual).
  */
 export async function iniciarDemo(op = {}) {
   const secreto = randomBytes(32).toString('hex');
@@ -113,12 +125,19 @@ export async function iniciarDemo(op = {}) {
   // Clave con formato de proveedor de IA, inventada en cada arranque.
   const claveIa = `sk-proj-${randomBytes(30).toString('base64url')}`;
 
+  const usuarios = op.usuarios ?? USUARIOS;
   const db = new PGlite();
   await db.exec(PRELUDIO);
-  const dirMig = join(APP, 'supabase', 'migrations');
-  for (const f of readdirSync(dirMig).filter((x) => x.endsWith('.sql')).sort()) await db.exec(readFileSync(join(dirMig, f), 'utf8'));
-  if (op.corregida) await db.exec(readFileSync(join(AQUI, 'arreglos.sql'), 'utf8'));
-  await db.exec(semilla());
+  if (!op.sinPermisosPorDefecto) await db.exec(PERMISOS_HISTORICOS);
+  if (op.sql) {
+    for (const u of Object.values(usuarios)) await db.query('insert into auth.users (id, email) values ($1, $2)', [u.id, u.correo]);
+    for (const script of op.sql) await db.exec(script);
+  } else {
+    const dirMig = join(APP, 'supabase', 'migrations');
+    for (const f of readdirSync(dirMig).filter((x) => x.endsWith('.sql')).sort()) await db.exec(readFileSync(join(dirMig, f), 'utf8'));
+    if (op.corregida) await db.exec(readFileSync(join(AQUI, 'arreglos.sql'), 'utf8'));
+    await db.exec(semilla());
+  }
 
   let url = '';
   const paginaInicio = readFileSync(join(APP, 'index.html'), 'utf8');
@@ -216,7 +235,7 @@ export async function iniciarDemo(op = {}) {
         if (ruta === '/auth/v1/settings') return enviar(res, 200, { external: { email: true }, disable_signup: false, mailer_autoconfirm: !op.corregida });
         if (ruta === '/auth/v1/token' && req.method === 'POST') {
           const { email, password } = await leerCuerpo(req);
-          const usuario = Object.values(USUARIOS).find((x) => x.correo === email && x.contrasena === password);
+          const usuario = Object.values(usuarios).find((x) => x.correo === email && x.contrasena === password);
           if (!usuario) return enviar(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
           const token = firmarJwt({ iss: 'supabase', sub: usuario.id, role: 'authenticated', email, user_metadata: {}, exp }, secreto);
           return enviar(res, 200, { access_token: token, token_type: 'bearer', expires_in: 3600, user: { id: usuario.id, email } });
@@ -251,7 +270,7 @@ export async function iniciarDemo(op = {}) {
   return {
     url,
     claveAnon,
-    usuarios: USUARIOS,
+    usuarios,
     db,
     cerrar: async () => {
       await new Promise((ok) => servidor.close(ok));

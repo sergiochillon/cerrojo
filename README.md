@@ -5,7 +5,7 @@ Supabase. Comprueba si el aislamiento entre usuarios **funciona**, no solo si RL
 "activado", y genera un informe entregable con el arreglo de cada hallazgo.
 
 > **Estado: MVP sin validar en producción.** Funciona de principio a fin contra la app
-> ficticia incluida y tiene 45 pruebas automáticas, pero **todavía no se ha ejecutado contra
+> ficticia incluida y tiene 60 pruebas automáticas, pero **todavía no se ha ejecutado contra
 > un proyecto Supabase real** ni se ha usado con ningún cliente. Antes de ofrecerlo, lee
 > [docs/LIMITACIONES.md](docs/LIMITACIONES.md).
 
@@ -134,8 +134,12 @@ informe); no es asesoramiento jurídico.
   `localhost`, direcciones privadas o internas (`10.x`, `172.16–31.x`, `192.168.x`,
   `169.254.x`, IPv6 local, `*.local`, `*.internal`…) y las formas alternativas de escribirlas,
   también cuando se llega a ellas por una redirección. La IP se resuelve una vez, se valida y
-  la conexión queda fijada a ella. `--permitir-local` admite únicamente tu propia máquina,
-  para la demo o un Supabase local; las redes privadas se rechazan siempre.
+  la conexión queda fijada a ella. Las redes privadas se rechazan siempre.
+- **`--permitir-local` abre toda tu máquina, no solo la demo.** Hace falta para auditar la
+  demo o un Supabase local, pero mientras está puesta la herramienta acepta como destino
+  **cualquier servicio que escuche en `localhost`** (bases de datos, paneles de
+  administración, otros servidores de desarrollo), también si una página redirige hacia
+  ellos. Úsala solo con una URL que conozcas y nunca al auditar la app de un tercero.
 - **Descargas acotadas.** El límite de tamaño se aplica mientras se descarga y sobre los bytes
   descomprimidos, así que una respuesta enorme no se carga en memoria.
 - **Credenciales fuera de las redirecciones.** Si una respuesta redirige a otro origen, se
@@ -143,6 +147,8 @@ informe); no es asesoramiento jurídico.
 - **Tráfico moderado.** Peticiones espaciadas (150 ms) y con un máximo por ejecución.
 - **Nada que ejecutar a ciegas.** Las funciones RPC y las Edge Functions detectadas se listan
   para revisarlas a mano; nunca se invocan.
+- **Solo la clave pública.** Si se le pasa una clave secreta (`sb_secret_…` o un JWT
+  `service_role`), se niega a conectarse.
 - **Secretos enmascarados.** Un secreto encontrado se cita como `abcdef…wxyz (N caracteres)`.
 - **Sin dependencias en ejecución.** La herramienta usa solo Node.js. PGlite es una
   dependencia de desarrollo, para la demo y las pruebas.
@@ -153,10 +159,10 @@ informe); no es asesoramiento jurídico.
 npm test
 ```
 
-45 pruebas: lectura de SQL y evaluación de políticas, extracción desde código público,
+60 pruebas: lectura de SQL y evaluación de políticas, extracción desde código público,
 integración contra la app ficticia (vulnerable y con los arreglos aplicados, para comprobar que
-los hallazgos desaparecen), falsos positivos conocidos, privacidad de los resultados y las
-salvaguardas descritas arriba.
+los hallazgos desaparecen), falsos positivos conocidos, privacidad de los resultados, las
+salvaguardas descritas arriba y el ensayo en local del guion de validación.
 
 ## Estructura
 
@@ -172,6 +178,7 @@ src/sql.js, src/repo.js  revisión de migraciones y código
 src/catalogo.js          textos de los hallazgos (ES/EN) y sus arreglos
 src/informe.js           informe HTML
 demo/                    app ficticia vulnerable, servidor local y arreglos de ejemplo
+validacion/              guion, SQL y validador de solo lectura para un Supabase de pruebas
 test/                    pruebas
 docs/                    investigación, límites, oferta, guía de revisión, lanzamiento
 ```
@@ -180,6 +187,8 @@ docs/                    investigación, límites, oferta, guía de revisión, l
 
 - [docs/INVESTIGACION.md](docs/INVESTIGACION.md) — por qué esta oportunidad, con fuentes y fechas.
 - [docs/LIMITACIONES.md](docs/LIMITACIONES.md) — qué no hace y qué falta por validar.
+- [validacion/GUION.md](validacion/GUION.md) — guion para validarla contra un proyecto Supabase
+  de pruebas con datos sintéticos (preparado; aún no ejecutado).
 - [docs/OFERTA.md](docs/OFERTA.md) — servicio, hipótesis de precio y textos de presentación.
 - [docs/GUIA-REVISION-MANUAL.md](docs/GUIA-REVISION-MANUAL.md) — cómo hacer la parte que no se automatiza.
 - [docs/AUTORIZACION.md](docs/AUTORIZACION.md) — plantilla de autorización escrita.

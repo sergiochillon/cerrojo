@@ -9,19 +9,20 @@ Documento breve para retomar el trabajo. Última actualización: 15-nov-2026.
 - [x] MVP funcional (`cerrojo`): `web`, `aislamiento`, `repo`, `informe`.
 - [x] App ficticia vulnerable (`demo/`) con PostgreSQL real (PGlite) y RLS.
 - [x] Salvaguardas de red y de datos revisadas (ver "Revisión de seguridad del 15-nov").
-- [x] 45 pruebas automáticas en verde (`npm test`).
+- [x] 60 pruebas automáticas en verde (`npm test`).
 - [x] README, `docs/LIMITACIONES.md`, `docs/OFERTA.md`, `docs/GUIA-REVISION-MANUAL.md`,
       `docs/AUTORIZACION.md`.
 - [x] Material de lanzamiento preparado: `docs/LANZAMIENTO.md`, `docs/index.html` (borrador),
       informes de ejemplo en `docs/`.
-- [ ] **Validar contra un proyecto Supabase real propio.** No hecho, por decisión expresa.
+- [x] Guion de validación preparado y ensayado en local: `validacion/GUION.md`.
+- [ ] **Validar contra un proyecto Supabase real propio.** No ejecutado: es un paso manual.
 - [ ] **Publicación.** No se ha publicado nada: ni repositorio, ni página, ni anuncio.
 - [ ] Primera auditoría real (gratuita y con permiso) para medir horas.
 
 ## Cómo ejecutarlo
 
     npm install
-    npm test           # 45 pruebas
+    npm test           # 60 pruebas
     npm run demo       # audita la app ficticia y genera salida/demo-informe.html
     node bin/cerrojo.js ayuda
 
@@ -38,7 +39,8 @@ Documento breve para retomar el trabajo. Última actualización: 15-nov-2026.
 5. **Precio de partida** (hipótesis): 290 € revisión, 590 € con arreglos, 90 € repaso. Regla
    para ajustarlo en `docs/OFERTA.md`.
 6. Commits con el correo `noreply` de GitHub, para no exponer datos personales si se publica.
-7. No se usó Antigravity (no está conectado a este entorno).
+7. Antigravity no se usó para revisar el MVP en la primera sesión; sí para revisar el guion de
+   validación (ver más abajo).
 
 ## Revisión de seguridad del 15-nov
 
@@ -62,6 +64,23 @@ Cuatro correcciones pedidas tras la primera revisión, todas con pruebas:
 
 De paso se corrigió un falso positivo: una columna `account_id` que no contiene usuarios ya no
 se toma por columna de dueño.
+
+## Guion de validación (15-nov)
+
+`validacion/` contiene el SQL (esquema, datos sintéticos, limpieza), una plantilla
+`.env.example`, un validador de solo lectura y el guion paso a paso. Decisiones:
+
+- El validador no tiene ninguna opción de escritura, solo acepta `https://<ref>.supabase.co`,
+  rechaza claves secretas y se detiene si el proyecto no lleva la marca `cv_marca`.
+- El guion no ejecuta `cerrojo aislamiento` directamente (no comprueba la marca); el validador
+  usa la misma función tras comprobarla.
+- `--probar-escritura` sigue limitado a bases locales desechables; el guion no lo usa en
+  ningún paso.
+- La herramienta rechaza ahora cualquier clave secreta antes de conectarse.
+- El ensayo local (`test/validacion.test.js`) aplica los mismos scripts a un PostgreSQL real y
+  comprueba que lo esperado es coherente. No demuestra nada sobre el Supabase de verdad.
+- Revisión independiente con Antigravity (`agy`, modo plan, sobre una copia): seis hallazgos,
+  todos corregidos. No modificó ningún archivo.
 
 ## Límite principal
 

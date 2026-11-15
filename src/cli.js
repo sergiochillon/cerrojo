@@ -19,11 +19,18 @@ Uso:
 Opciones comunes:
   --salida <archivo>        Dónde guardar el resultado (por defecto, carpeta salida/)
   --ci                      Termina con código 1 si hay hallazgos críticos o altos
-  --permitir-local          Admite como destino la propia máquina (127.0.0.1, localhost): la demo
-                            o un Supabase local de desarrollo. Sin esta opción, "web" y
-                            "aislamiento" rechazan localhost. Las direcciones privadas o internas
-                            (10.x, 192.168.x, 169.254.x, *.local, *.internal…) se rechazan
-                            siempre, también cuando se llega a ellas por una redirección.
+  --permitir-local          Admite como destino la propia máquina (127.0.0.1, localhost). Hace
+                            falta para la demo o un Supabase local, pero OJO: no se limita a
+                            ellos. Mientras está puesta, la herramienta acepta CUALQUIER servicio
+                            que escuche en esta máquina (bases de datos, paneles, otros
+                            servidores), también si una página redirige hacia él. No la uses al
+                            auditar la app de un tercero. Sin esta opción, "web" y "aislamiento"
+                            rechazan localhost. Las direcciones privadas o internas (10.x,
+                            192.168.x, 169.254.x, *.local, *.internal…) se rechazan siempre,
+                            también cuando se llega a ellas por una redirección.
+
+  Solo se admite la clave PÚBLICA del proyecto. Con una clave secreta (sb_secret_… o
+  service_role) la herramienta se niega a conectarse.
 
 cerrojo web:
   --supabase-url <url>      Si no se detecta sola (dominio propio o proxy)

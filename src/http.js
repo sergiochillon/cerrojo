@@ -230,10 +230,15 @@ export class Cliente {
           const cerrar = (truncada) => {
             if (cerrado) return;
             cerrado = true;
-            if (truncada) pet.destroy(); // deja de descargar en cuanto se alcanza el límite
+            if (truncada) {
+              // Deja de descargar y de descomprimir en cuanto se alcanza el límite.
+              pet.destroy();
+              if (flujo !== res) flujo.destroy();
+            }
             terminar(Buffer.concat(trozos).toString('utf8'), truncada);
           };
           flujo.on('data', (trozo) => {
+            if (cerrado) return;
             const hueco = maxBytes - recibidos;
             if (trozo.length >= hueco) {
               trozos.push(trozo.subarray(0, hueco));

@@ -7,6 +7,7 @@ import { probarAislamiento, LIMITE_MAXIMO } from './aislamiento.js';
 import { auditarRepo } from './repo.js';
 import { generarInforme, resumenTexto } from './informe.js';
 import { Cliente, esLoopback } from './http.js';
+import { GRAVEDADES } from './util.js';
 
 const AYUDA = `cerrojo — auditoría de seguridad para apps hechas con IA sobre Supabase
 
@@ -66,6 +67,9 @@ cerrojo aislamiento:
                             se evalúa leyendo las políticas ("cerrojo repo").
 
 cerrojo informe:
+  --manual <archivo.json>   Añade al informe lo que aporta la revisión manual: hallazgos propios,
+                            hallazgos automáticos descartados (con su motivo) y lo que quedó sin
+                            revisar. Plantilla en docs/revision-manual.ejemplo.json
   --idioma es|en            Idioma del informe (por defecto es)
   --cliente <nombre>        Para quién es el informe
   --auditor <nombre>        Quién firma la auditoría
@@ -80,7 +84,7 @@ Autorización:
 function parsear(argv) {
   const pos = [];
   const op = {};
-  const conValor = new Set(['salida', 'supabase-url', 'clave', 'tablas', 'desde', 'config', 'idioma', 'cliente', 'auditor', 'app', 'limite']);
+  const conValor = new Set(['salida', 'supabase-url', 'clave', 'tablas', 'desde', 'config', 'idioma', 'cliente', 'auditor', 'app', 'limite', 'manual']);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('--')) {
@@ -101,6 +105,28 @@ function guardar(ruta, contenido) {
 const marca = () => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const lista = (s) => (s ? String(s).split(',').map((x) => x.trim()).filter(Boolean) : []);
 const leerJson = (ruta) => JSON.parse(readFileSync(ruta, 'utf8'));
+
+/**
+ * Lee el archivo de la revisión manual y lo convierte en un resultado más para el informe.
+ * Formato: { "hallazgos": [{titulo, gravedad, donde, observado, porque, arreglo}],
+ *            "descartar": [{id, donde, motivo}], "noRevisado": ["…"] }
+ */
+export function leerRevisionManual(ruta) {
+  const d = leerJson(ruta);
+  const fallo = (m) => {
+    throw new Error(`Revisión manual (${ruta}): ${m}`);
+  };
+  const hallazgos = (d.hallazgos ?? []).map((h, i) => {
+    if (!h.titulo || !h.donde) fallo(`el hallazgo ${i + 1} necesita "titulo" y "donde".`);
+    if (!GRAVEDADES.includes(h.gravedad)) fallo(`el hallazgo ${i + 1} tiene una gravedad no válida ("${h.gravedad}"). Usa: ${GRAVEDADES.join(', ')}.`);
+    return { id: 'MANUAL', gravedad: h.gravedad, donde: String(h.donde), texto: { titulo: String(h.titulo), detalle: String(h.observado ?? ''), porque: String(h.porque ?? ''), arreglo: String(h.arreglo ?? '') } };
+  });
+  const descartar = (d.descartar ?? []).map((x, i) => {
+    if (!x.id || !x.donde || !x.motivo) fallo(`el descarte ${i + 1} necesita "id", "donde" y "motivo".`);
+    return { id: String(x.id), donde: String(x.donde), motivo: String(x.motivo) };
+  });
+  return { herramienta: 'cerrojo', tipo: 'manual', objetivo: d.alcance ? String(d.alcance) : 'Revisión manual', fin: new Date().toISOString(), hallazgos, descartar, noRevisado: (d.noRevisado ?? []).map(String), superadas: [], notas: [] };
+}
 
 function exigirAutorizacion(op, objetivo) {
   if (op.autorizo) return { declarada: true, fecha: new Date().toISOString(), objetivo };
@@ -174,6 +200,7 @@ export async function main(argv) {
   } else if (orden === 'informe') {
     if (!pos.length) throw new Error('Indica al menos un archivo de resultado (.json).');
     const resultados = pos.map(leerJson);
+    if (op.manual) resultados.push(leerRevisionManual(op.manual));
     const html = generarInforme(resultados, { idioma: op.idioma, cliente: op.cliente, auditor: op.auditor, app: op.app });
     const ruta = guardar(resolve(op.salida ?? `salida/informe-${marca()}.html`), html);
     process.stdout.write(`Informe guardado en ${ruta}\n`);

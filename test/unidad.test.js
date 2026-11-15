@@ -163,7 +163,7 @@ test('aislamiento: sin datos de las cuentas de prueba el resultado es "no conclu
   const r = await probarAislamiento(opAislamiento(supabaseFalso(() => ({ 'a@x.test': [], 'b@x.test': [] }))));
   assert.equal(r.matriz[0].resultado, 'sin_datos');
   assert.equal(r.superadas.length, 0);
-  assert.ok(r.notas.some((n) => /No concluyente/.test(n.es)));
+  assert.ok(r.avisos.some((n) => /No concluyente/.test(n.es)));
 });
 
 test('aislamiento: detecta filas de un tercero aunque no sean de la otra cuenta de prueba', async () => {
@@ -189,5 +189,5 @@ test('aislamiento: una columna account_id que no contiene usuarios no se toma po
   const r = await probarAislamiento(opAislamiento(supabaseFalso(() => ({ 'a@x.test': [fila(1), fila(2)], 'b@x.test': [fila(1), fila(2)] }))));
   assert.equal(r.hallazgos.length, 0);
   assert.equal(r.matriz[0].resultado, 'sin_dueno');
-  assert.ok(r.notas.some((n) => /Sin columna de dueño identificable/.test(n.es)));
+  assert.ok(r.avisos.some((n) => /Sin columna de dueño identificable/.test(n.es)));
 });

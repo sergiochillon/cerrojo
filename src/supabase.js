@@ -37,6 +37,18 @@ export class Supabase {
     return interpretarLectura(r);
   }
 
+  /**
+   * ¿Acepta el proyecto esta clave? Se pregunta a un endpoint que no depende de ninguna tabla.
+   * Sirve para no confundir "la clave no vale" con "todas las tablas están protegidas".
+   * @returns {Promise<'aceptada'|'rechazada'|'desconocido'>}
+   */
+  async estadoClave() {
+    const r = await this.c.pedir(`${this.url}/auth/v1/settings`, { cabeceras: this.cabeceras(), maxBytes: 20000 });
+    if (r.ok && json(r.texto) && typeof json(r.texto) === 'object') return 'aceptada';
+    if (r.estado === 401 || r.estado === 403) return 'rechazada';
+    return 'desconocido';
+  }
+
   /** Configuración pública de autenticación. */
   async ajustesAuth() {
     const r = await this.c.pedir(`${this.url}/auth/v1/settings`, { cabeceras: this.cabeceras() });

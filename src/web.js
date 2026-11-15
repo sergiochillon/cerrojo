@@ -26,6 +26,9 @@ export async function auditarWeb(urlApp, op = {}) {
   const hallazgos = [];
   const superadas = [];
   const notas = [];
+  // Motivos por los que el resultado NO permite concluir nada. Van destacados en el informe:
+  // un informe sin hallazgos solo vale si no hay ninguno de estos avisos.
+  const avisos = [];
 
   const base = new URL(urlApp);
   avisar(`Descargando ${base.href}`);
@@ -116,9 +119,9 @@ export async function auditarWeb(urlApp, op = {}) {
   const tablasEstado = {};
 
   if (!supabaseUrl || !candidata) {
-    notas.push({
-      es: 'No se detectó un proyecto de Supabase (URL y clave pública) en el código. Si la app usa un dominio propio o un proxy, indícalo con --supabase-url y --clave.',
-      en: 'No Supabase project (URL and public key) detected in the code. If the app uses a custom domain or proxy, pass --supabase-url and --clave.',
+    avisos.push({
+      es: 'No se detectó un proyecto de Supabase (URL y clave pública) en el código de la app, así que NO se ha comprobado ninguna tabla. Si la app usa un dominio propio o un proxy, indícalo con --supabase-url y --clave.',
+      en: 'No Supabase project (URL and public key) was detected in the app code, so NO table was checked. If the app uses a custom domain or proxy, pass --supabase-url and --clave.',
     });
   } else {
     avisar(`Proyecto Supabase: ${supabaseUrl}`);
@@ -131,6 +134,22 @@ export async function auditarWeb(urlApp, op = {}) {
     }
     const sb = new Supabase(cliente, supabaseUrl, candidata.clave);
     if (candidata.tipo === 'anon-jwt') hallazgos.push(hallazgo('S-CLAVE-HEREDADA', 'info', supabaseUrl));
+
+    // Con una clave caducada o mal copiada, todas las tablas responden "no autorizado" y
+    // parecerían protegidas. Se comprueba la clave contra un endpoint que no depende de tablas.
+    const estadoClave = await sb.estadoClave();
+    const claveDudosa = estadoClave !== 'aceptada';
+    if (estadoClave === 'rechazada') {
+      avisos.push({
+        es: 'El proyecto RECHAZA la clave pública detectada (puede estar caducada, revocada o mal copiada). Las respuestas "no autorizado" de las tablas no significan que estén protegidas: el resultado sobre tablas y archivos NO es concluyente. Repite con la clave correcta (--clave).',
+        en: 'The project REJECTS the detected public key (it may be expired, revoked or mistyped). "Unauthorized" responses from tables do not mean they are protected: the result on tables and files is NOT conclusive. Re-run with the correct key (--clave).',
+      });
+    } else if (estadoClave === 'desconocido') {
+      avisos.push({
+        es: 'No se pudo confirmar que el proyecto acepte la clave pública detectada (el servicio de autenticación no respondió como se esperaba). Trata como no concluyente cualquier tabla que figure como protegida.',
+        en: 'Could not confirm that the project accepts the detected public key (the auth service did not respond as expected). Treat any table reported as protected as inconclusive.',
+      });
+    }
 
     const esquema = await sb.esquema();
     if (esquema) {
@@ -167,9 +186,14 @@ export async function auditarWeb(urlApp, op = {}) {
         en: 'To check whether each table is readable without a session, one row per table was requested with the public key. Received values were discarded; the report only holds counts and column names.',
       });
     }
-    if (claveInvalida) {
-      notas.push({ es: 'El backend rechazó la clave pública detectada; no se pudieron comprobar las tablas.', en: 'The backend rejected the detected public key; tables could not be checked.' });
-    } else if (superficie.tablas.length) {
+    if (claveInvalida && estadoClave !== 'rechazada') {
+      avisos.push({ es: 'El backend rechazó la clave pública detectada; no se pudieron comprobar las tablas.', en: 'The backend rejected the detected public key; tables could not be checked.' });
+    } else if (!tablas.size) {
+      avisos.push({
+        es: 'No se encontró ningún nombre de tabla en el código público de la app, así que no se ha comprobado ninguna. Indica las tablas con --tablas (el titular puede listarlas desde su panel).',
+        en: 'No table name was found in the app public code, so none was checked. Pass the tables with --tablas (the owner can list them from the dashboard).',
+      });
+    } else if (superficie.tablas.length && !claveDudosa) {
       const cerradas = superficie.tablas.filter((t) => !hallazgos.some((h) => h.id === 'S-TABLA-LEGIBLE-ANON' && h.datos.tabla === t));
       if (cerradas.length) {
         superadas.push({
@@ -204,6 +228,7 @@ export async function auditarWeb(urlApp, op = {}) {
     hallazgos,
     superadas,
     notas,
+    avisos,
     superficie,
     tablasEstado,
   };

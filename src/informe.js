@@ -16,6 +16,11 @@ const T = {
     veredictoGrave: 'Hay hallazgos de gravedad crítica o alta. Recomendación: corregirlos antes de abrir la aplicación a usuarios reales, o cuanto antes si ya está en uso.',
     veredictoMedio: 'No se han encontrado hallazgos críticos ni altos. Conviene revisar los de gravedad media antes de crecer en usuarios.',
     veredictoLeve: 'Solo se han encontrado mejoras de gravedad baja o informativas.',
+    veredictoNoConcluyente: 'Resultado NO concluyente: parte de las comprobaciones no pudo hacerse (ver los avisos). La ausencia de hallazgos graves no permite afirmar nada sobre lo que quedó sin comprobar.',
+    avisos: 'Avisos: lo que no se ha podido comprobar',
+    descartados: 'Hallazgos automáticos descartados tras la revisión manual',
+    motivo: 'Motivo',
+    noRevisado: 'No revisado',
     alcance: 'Alcance: qué se ha comprobado',
     donde: 'Dónde',
     evidencia: 'Qué se ha observado',
@@ -44,7 +49,7 @@ const T = {
     autorizacion: 'Autorización',
     autorizacionTexto: 'Quien ejecutó la herramienta declaró ser titular de la aplicación o contar con autorización escrita de su titular.',
     peticiones: 'peticiones HTTP',
-    tipo: { web: 'Aplicación desplegada (sin sesión)', aislamiento: 'Aislamiento entre usuarios (con dos cuentas de prueba)', repo: 'Repositorio (migraciones SQL y código)' },
+    tipo: { web: 'Aplicación desplegada (sin sesión)', aislamiento: 'Aislamiento entre usuarios (con dos cuentas de prueba)', repo: 'Repositorio (migraciones SQL y código)', manual: 'Revisión manual' },
     res: { fuga: 'FUGA', aislada: 'aislada', sin_datos: 'no concluyente (sin datos de prueba)', sin_dueno: 'sin columna de dueño', denegada: 'acceso denegado', no_existe: 'no existe', no_concluyente: 'no concluyente' },
     limitesLista: [
       'Es una revisión acotada en el tiempo, no una garantía de seguridad ni una certificación.',
@@ -67,6 +72,11 @@ const T = {
     veredictoGrave: 'There are critical or high severity findings. Recommendation: fix them before opening the application to real users, or as soon as possible if it is already in use.',
     veredictoMedio: 'No critical or high findings. Review the medium ones before growing your user base.',
     veredictoLeve: 'Only low-severity or informational improvements were found.',
+    veredictoNoConcluyente: 'INCONCLUSIVE result: some checks could not be performed (see the warnings). The absence of serious findings says nothing about what was left unchecked.',
+    avisos: 'Warnings: what could not be checked',
+    descartados: 'Automated findings dismissed after manual review',
+    motivo: 'Reason',
+    noRevisado: 'Not reviewed',
     alcance: 'Scope: what was checked',
     donde: 'Where',
     evidencia: 'What was observed',
@@ -95,7 +105,7 @@ const T = {
     autorizacion: 'Authorization',
     autorizacionTexto: 'The person running the tool declared they own the application or hold written authorization from its owner.',
     peticiones: 'HTTP requests',
-    tipo: { web: 'Deployed application (no session)', aislamiento: 'User isolation (two test accounts)', repo: 'Repository (SQL migrations and code)' },
+    tipo: { web: 'Deployed application (no session)', aislamiento: 'User isolation (two test accounts)', repo: 'Repository (SQL migrations and code)', manual: 'Manual review' },
     res: { fuga: 'LEAK', aislada: 'isolated', sin_datos: 'inconclusive (no test data)', sin_dueno: 'no owner column', denegada: 'access denied', no_existe: 'does not exist', no_concluyente: 'inconclusive' },
     limitesLista: [
       'This is a time-boxed review, not a security guarantee or certification.',
@@ -122,22 +132,34 @@ function rellenar(texto, datos) {
 /** Ordena y prepara los hallazgos de varios resultados para presentarlos. */
 export function consolidar(resultados, idioma = 'es') {
   const todos = [];
+  const descartados = [];
+  // Un hallazgo automático se descarta solo si la revisión manual lo pide con su id y su
+  // ubicación exactos; queda listado aparte, con el motivo, para que nada desaparezca en silencio.
+  const aDescartar = resultados.flatMap((r) => r.descartar ?? []);
   for (const r of resultados) {
     for (const h of r.hallazgos) {
+      if (h.texto) {
+        // Hallazgo escrito a mano por el auditor.
+        todos.push({ ...h, origen: r.tipo, titulo: h.texto.titulo, porque: h.texto.porque ?? '', arreglo: h.texto.arreglo ?? '', detalle: h.texto.detalle ?? '' });
+        continue;
+      }
       const c = CATALOGO[h.id];
-      todos.push({
+      const presentado = {
         ...h,
         origen: r.tipo,
         titulo: c.titulo[idioma],
         porque: c.porque[idioma],
         arreglo: rellenar(c.arreglo[idioma], h.datos),
         detalle: c.detalle(h.datos ?? {}, idioma),
-      });
+      };
+      const descarte = aDescartar.find((d) => d.id === h.id && d.donde === h.donde);
+      if (descarte) descartados.push({ ...presentado, motivo: descarte.motivo });
+      else todos.push(presentado);
     }
   }
   todos.sort((a, b) => pesoGravedad(a.gravedad) - pesoGravedad(b.gravedad) || a.id.localeCompare(b.id) || String(a.donde).localeCompare(String(b.donde)));
   const cuenta = Object.fromEntries(GRAVEDADES.map((g) => [g, todos.filter((h) => h.gravedad === g).length]));
-  return { hallazgos: todos, cuenta };
+  return { hallazgos: todos, cuenta, descartados };
 }
 
 /**
@@ -147,16 +169,20 @@ export function consolidar(resultados, idioma = 'es') {
 export function generarInforme(resultados, meta = {}) {
   const L = meta.idioma === 'en' ? 'en' : 'es';
   const t = T[L];
-  const { hallazgos, cuenta } = consolidar(resultados, L);
+  const { hallazgos, cuenta, descartados } = consolidar(resultados, L);
   const fecha = meta.fecha ?? new Date().toISOString().slice(0, 10);
   const app = meta.app ?? resultados.find((r) => r.tipo === 'web')?.objetivo ?? resultados[0]?.objetivo ?? '';
-  const veredicto = !hallazgos.length ? t.sinHallazgos : cuenta.critica + cuenta.alta > 0 ? t.veredictoGrave : cuenta.media > 0 ? t.veredictoMedio : t.veredictoLeve;
-  const frases = (campo) => resultados.flatMap((r) => (r[campo] ?? []).map((x) => x[L]));
+  // Los textos pueden venir en los dos idiomas ({es, en}) o, si los escribió el auditor, como texto.
+  const frases = (campo) => resultados.flatMap((r) => (r[campo] ?? []).map((x) => (typeof x === 'string' ? x : x[L])));
+  const avisos = frases('avisos');
+  const hayGraves = cuenta.critica + cuenta.alta > 0;
+  // Con avisos y sin hallazgos graves, lo honesto es decir que no se puede concluir.
+  const veredicto = hayGraves ? t.veredictoGrave : avisos.length ? t.veredictoNoConcluyente : !hallazgos.length ? t.sinHallazgos : cuenta.media > 0 ? t.veredictoMedio : t.veredictoLeve;
   const aisl = resultados.find((r) => r.tipo === 'aislamiento');
   const repo = resultados.find((r) => r.tipo === 'repo');
   const web = resultados.find((r) => r.tipo === 'web');
   const hayDatosExpuestos = hallazgos.some((h) => ['S-TABLA-LEGIBLE-ANON', 'A-LECTURA-CRUZADA', 'A-ESCRITURA-CRUZADA', 'S-BUCKET-LISTABLE'].includes(h.id));
-  const requiereAutorizacion = resultados.some((r) => r.tipo !== 'repo');
+  const requiereAutorizacion = resultados.some((r) => r.tipo === 'web' || r.tipo === 'aislamiento');
 
   const chips = GRAVEDADES.map((g) => `<div class="chip g-${g}"><b>${cuenta[g]}</b><span>${esc(ETIQUETA_GRAVEDAD[L][g])}</span></div>`).join('');
 
@@ -205,6 +231,13 @@ export function generarInforme(resultados, meta = {}) {
 
   const superadas = frases('superadas');
   const notas = frases('notas');
+  const noRevisado = frases('noRevisado').map((s) => `${t.noRevisado}: ${s}`);
+  const seccionAvisos = avisos.length ? `<section><h2>${t.avisos}</h2><ul class="avisos">${avisos.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></section>` : '';
+  const seccionDescartados = descartados.length
+    ? `<section><h2>${t.descartados}</h2><div class="tabla-ancha"><table><thead><tr><th>${t.hallazgos}</th><th>${t.donde}</th><th>${t.motivo}</th></tr></thead><tbody>
+      ${descartados.map((d) => `<tr><td>${esc(d.titulo)}</td><td><code>${esc(d.donde)}</code></td><td>${esc(d.motivo ?? '—')}</td></tr>`).join('')}
+      </tbody></table></div></section>`
+    : '';
 
   return `<!doctype html>
 <html lang="${L}">
@@ -250,6 +283,7 @@ export function generarInforme(resultados, meta = {}) {
   .r-fuga { color:var(--critica); font-weight:700; } .r-aislada { color:var(--bien); font-weight:600; }
   ul { margin:0 0 12px; padding-left: 20px; } li { margin-bottom:6px; }
   .ok li::marker { content: "✓  "; color: var(--bien); }
+  .avisos { background:#fff8e6; border:1px solid #e3c770; border-left:5px solid var(--media); border-radius:6px; padding:14px 18px 8px 36px; }
   footer { margin-top:48px; padding-top:12px; border-top:1px solid var(--linea); color:var(--suave); font-size:13px; }
   @media (max-width: 640px) { .chips { grid-template-columns: repeat(2, 1fr); } dl { grid-template-columns: 1fr; gap:2px 0; } dt { padding-top:8px; } }
   @media print { body { background:#fff; font-size:12px; } main { padding:0; max-width:none; } .hallazgo, .chip, table, .veredicto { box-shadow:none; } h2 { break-after: avoid; } }
@@ -267,6 +301,8 @@ export function generarInforme(resultados, meta = {}) {
     <p class="veredicto">${esc(veredicto)}</p>
   </section>
 
+  ${seccionAvisos}
+
   <section>
     <h2>${t.alcance}</h2>
     <div class="tabla-ancha"><table><tbody>${filasAlcance}</tbody></table></div>
@@ -282,11 +318,12 @@ export function generarInforme(resultados, meta = {}) {
   ${seccionInventario}
   ${superadas.length ? `<section><h2>${t.superadas}</h2><ul class="ok">${superadas.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></section>` : ''}
   ${seccionSuperficie}
+  ${seccionDescartados}
   ${hayDatosExpuestos ? `<section><h2>${t.rgpd}</h2><p>${esc(t.rgpdTexto)}</p></section>` : ''}
 
   <section>
     <h2>${t.limites}</h2>
-    <ul>${[...t.limitesLista, ...notas].map((s) => `<li>${esc(s)}</li>`).join('')}</ul>
+    <ul>${[...t.limitesLista, ...notas, ...noRevisado].map((s) => `<li>${esc(s)}</li>`).join('')}</ul>
   </section>
 
   <footer>${t.pie} · ${esc(fecha)}</footer>
@@ -301,5 +338,6 @@ export function resumenTexto(resultado, idioma = 'es') {
   const { hallazgos, cuenta } = consolidar([resultado], idioma);
   const lineas = hallazgos.map((h) => `  [${ETIQUETA_GRAVEDAD[idioma][h.gravedad].toUpperCase().padEnd(11)}] ${h.titulo} — ${h.donde}`);
   const totales = GRAVEDADES.filter((g) => cuenta[g]).map((g) => `${cuenta[g]} ${ETIQUETA_GRAVEDAD[idioma][g].toLowerCase()}`).join(', ');
-  return [`${hallazgos.length} hallazgo(s)${totales ? `: ${totales}` : ''}`, ...lineas].join('\n');
+  const avisos = (resultado.avisos ?? []).map((a) => `  ! NO CONCLUYENTE: ${a[idioma]}`);
+  return [`${hallazgos.length} hallazgo(s)${totales ? `: ${totales}` : ''}`, ...lineas, ...avisos].join('\n');
 }

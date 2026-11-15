@@ -1,0 +1,24 @@
+{
+  "alcance": "Revisión manual de políticas, Edge Functions y configuración",
+  "hallazgos": [
+    {
+      "titulo": "La función delete-account acepta el id de usuario en el cuerpo de la petición",
+      "gravedad": "critica",
+      "donde": "supabase/functions/delete-account/index.ts",
+      "observado": "La función borra la cuenta cuyo userId llega en el cuerpo, usando la clave de servicio, sin leer el token de quien llama.",
+      "porque": "Cualquiera que conozca la URL de la función puede borrar la cuenta de cualquier usuario.",
+      "arreglo": "Obtener el usuario con supabase.auth.getUser(token) y borrar únicamente ese id; ignorar cualquier userId recibido."
+    }
+  ],
+  "descartar": [
+    {
+      "id": "R-POLITICA-LECTURA-ABIERTA",
+      "donde": "public.plans",
+      "motivo": "Confirmado con el titular: es el catálogo de planes y es público a propósito."
+    }
+  ],
+  "noRevisado": [
+    "Lógica de pagos y webhooks de Stripe (fuera de alcance).",
+    "Configuración de proveedores OAuth (sin acceso al panel)."
+  ]
+}

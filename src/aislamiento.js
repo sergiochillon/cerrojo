@@ -61,6 +61,7 @@ export async function probarAislamiento(op) {
   const hallazgos = [];
   const superadas = [];
   const notas = [];
+  const avisos = []; // lo que impide concluir; el informe lo destaca
   const matriz = [];
 
   for (const tabla of [...new Set(op.tablas)].filter(esIdentificador).sort()) {
@@ -141,14 +142,14 @@ export async function probarAislamiento(op) {
 
   const sinDatos = matriz.filter((m) => m.resultado === 'sin_datos').map((m) => m.tabla);
   if (sinDatos.length) {
-    notas.push({
+    avisos.push({
       es: `No concluyente en: ${sinDatos.join(', ')}. Ninguna de las cuentas de prueba tiene filas propias ahí; crea datos con ambas cuentas y repite la prueba.`,
       en: `Inconclusive for: ${sinDatos.join(', ')}. Neither test account owns rows there; create data with both accounts and re-run.`,
     });
   }
   const sinDueno = matriz.filter((m) => m.resultado === 'sin_dueno').map((m) => `${m.tabla} (A: ${m.A}, B: ${m.B})`);
   if (sinDueno.length) {
-    notas.push({
+    avisos.push({
       es: `Sin columna de dueño identificable en: ${sinDueno.join('; ')}. Ambas cuentas leen filas; hay que confirmar a mano si es contenido común.`,
       en: `No identifiable owner column in: ${sinDueno.join('; ')}. Both accounts read rows; confirm manually whether this is shared content.`,
     });
@@ -179,6 +180,7 @@ export async function probarAislamiento(op) {
     hallazgos,
     superadas,
     notas,
+    avisos,
     matriz,
     lectura: { limitePorCuentaYTabla: limite, filasDescargadas: filasLeidas },
     escrituraProbada: !!op.probarEscritura,

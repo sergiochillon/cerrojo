@@ -35,6 +35,14 @@ Un consejo de la crítica comercial **no** se siguió: no decir al cliente que l
 filas de su base de datos. Se resolvió de otra forma (trabajar sobre una réplica local) y se
 mantiene el aviso.
 
+## Publicado
+
+El 16-nov-2026 se publicaron el repositorio (<https://github.com/sergiochillon/cerrojo>) y la
+página del proyecto (<https://sergiochillon.github.io/cerrojo/>), tras comprobar que era
+gratuito, con cuenta ya autenticada, en un repositorio nuevo y sin secretos ni datos
+personales. Detalle en [LANZAMIENTO.md](LANZAMIENTO.md). No se publicó ninguna oferta en
+Fiverr, no se envió ninguna propuesta y no se anunció en ningún sitio.
+
 ## Lo que no se hizo, y por qué
 
 | Qué | Por qué |

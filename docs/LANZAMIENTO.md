@@ -4,15 +4,29 @@
 
 | Pieza | Estado |
 |---|---|
-| Repositorio público con el código, las pruebas y la documentación | Ver la sección "Publicado" |
-| Página del proyecto (`docs/index.html`, GitHub Pages) | Ver la sección "Publicado" |
+| Repositorio público con el código, las pruebas y la documentación | **Publicado** el 16-nov-2026 |
+| Página del proyecto (`docs/index.html`, GitHub Pages) | **Publicada** el 16-nov-2026 |
 | Gig en Fiverr | **No publicado.** Textos en [MARKETPLACES.md](MARKETPLACES.md). |
 | Propuestas en Upwork | **Ninguna enviada.** Textos en [MARKETPLACES.md](MARKETPLACES.md). |
 | Anuncio en redes | **No publicado.** Borradores abajo. |
 
 ## Publicado
 
-_(Se rellena al publicar; si esta sección sigue así, no se ha publicado nada.)_
+- Repositorio: <https://github.com/sergiochillon/cerrojo> (público, nuevo, sin relación con
+  otros proyectos).
+- Página: <https://sergiochillon.github.io/cerrojo/> (GitHub Pages, carpeta `docs/`; lleva
+  `noindex`, así que no aparece en buscadores: sirve para enlazarla).
+- Informe de ejemplo: <https://sergiochillon.github.io/cerrojo/ejemplo-informe.html> y
+  <https://sergiochillon.github.io/cerrojo/sample-report.html>.
+- Integración continua: las pruebas y la demo se ejecutan en cada cambio (GitHub Actions,
+  gratuito en repositorios públicos).
+
+La página menciona el servicio como "en preparación", con precios orientativos, y dice
+expresamente que aún no se ha prestado a ningún cliente. El contacto es una solicitud pública
+en GitHub.
+
+**Para retirarlo:** `gh repo delete sergiochillon/cerrojo` borra el repositorio y la página.
+Para ocultar solo la página: Settings → Pages → Unpublish.
 
 ## Condiciones que se comprobaron para publicar el repositorio y la página
 

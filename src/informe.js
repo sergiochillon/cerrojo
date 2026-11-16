@@ -50,7 +50,7 @@ const T = {
     autorizacionTexto: 'Quien ejecutó la herramienta declaró ser titular de la aplicación o contar con autorización escrita de su titular.',
     peticiones: 'peticiones HTTP',
     tipo: { web: 'Aplicación desplegada (sin sesión)', aislamiento: 'Aislamiento entre usuarios (con dos cuentas de prueba)', repo: 'Repositorio (migraciones SQL y código)', manual: 'Revisión manual' },
-    res: { fuga: 'FUGA', aislada: 'aislada', sin_datos: 'no concluyente (sin datos de prueba)', sin_dueno: 'sin columna de dueño', denegada: 'acceso denegado', no_existe: 'no existe', no_concluyente: 'no concluyente' },
+    res: { fuga: 'FUGA', aislada: 'aislada', sin_datos: 'no concluyente (sin datos de prueba)', sin_dueno: 'sin columna de dueño', denegada: 'acceso denegado', no_existe: 'no existe', no_concluyente: 'no concluyente', error: 'no se pudo comprobar' },
     limitesLista: [
       'Es una revisión acotada en el tiempo, no una garantía de seguridad ni una certificación.',
       'Las comprobaciones automáticas detectan clases concretas de fallos (exposición de datos por RLS, secretos publicados, configuración). No cubren la lógica de negocio, pagos, ni ataques que requieran interacción.',
@@ -106,7 +106,7 @@ const T = {
     autorizacionTexto: 'The person running the tool declared they own the application or hold written authorization from its owner.',
     peticiones: 'HTTP requests',
     tipo: { web: 'Deployed application (no session)', aislamiento: 'User isolation (two test accounts)', repo: 'Repository (SQL migrations and code)', manual: 'Manual review' },
-    res: { fuga: 'LEAK', aislada: 'isolated', sin_datos: 'inconclusive (no test data)', sin_dueno: 'no owner column', denegada: 'access denied', no_existe: 'does not exist', no_concluyente: 'inconclusive' },
+    res: { fuga: 'LEAK', aislada: 'isolated', sin_datos: 'inconclusive (no test data)', sin_dueno: 'no owner column', denegada: 'access denied', no_existe: 'does not exist', no_concluyente: 'inconclusive', error: 'could not be checked' },
     limitesLista: [
       'This is a time-boxed review, not a security guarantee or certification.',
       'Automated checks detect specific classes of flaws (RLS data exposure, published secrets, configuration). They do not cover business logic, payments, or attacks requiring interaction.',
@@ -129,6 +129,17 @@ function rellenar(texto, datos) {
   });
 }
 
+/** El detalle se compone a partir de `datos`; si el archivo viene incompleto, no debe romper el informe. */
+function detalleSeguro(c, datos, idioma) {
+  try {
+    return String(c.detalle(datos ?? {}, idioma) ?? '');
+  } catch {
+    return '';
+  }
+}
+const clase = (v) => (/^[a-z_]{1,30}$/.test(String(v ?? '')) ? String(v) : '');
+const numero = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? String(Number(v)) : '—');
+
 /** Ordena y prepara los hallazgos de varios resultados para presentarlos. */
 export function consolidar(resultados, idioma = 'es') {
   const todos = [];
@@ -137,20 +148,26 @@ export function consolidar(resultados, idioma = 'es') {
   // ubicación exactos; queda listado aparte, con el motivo, para que nada desaparezca en silencio.
   const aDescartar = resultados.flatMap((r) => r.descartar ?? []);
   for (const r of resultados) {
-    for (const h of r.hallazgos) {
+    for (const original of r.hallazgos ?? []) {
+      // Los resultados se leen de archivos: no se da por bueno ningún campo.
+      const h = { ...original, gravedad: GRAVEDADES.includes(original.gravedad) ? original.gravedad : 'info', donde: String(original.donde ?? '') };
       if (h.texto) {
         // Hallazgo escrito a mano por el auditor.
         todos.push({ ...h, origen: r.tipo, titulo: h.texto.titulo, porque: h.texto.porque ?? '', arreglo: h.texto.arreglo ?? '', detalle: h.texto.detalle ?? '' });
         continue;
       }
       const c = CATALOGO[h.id];
+      if (!c) {
+        todos.push({ ...h, origen: r.tipo, titulo: `Hallazgo ${String(h.id)}`, porque: '', arreglo: '', detalle: '' });
+        continue;
+      }
       const presentado = {
         ...h,
         origen: r.tipo,
         titulo: c.titulo[idioma],
         porque: c.porque[idioma],
         arreglo: rellenar(c.arreglo[idioma], h.datos),
-        detalle: c.detalle(h.datos ?? {}, idioma),
+        detalle: detalleSeguro(c, h.datos, idioma),
       };
       const descarte = aDescartar.find((d) => d.id === h.id && d.donde === h.donde);
       if (descarte) descartados.push({ ...presentado, motivo: descarte.motivo });
@@ -173,13 +190,14 @@ export function generarInforme(resultados, meta = {}) {
   const fecha = meta.fecha ?? new Date().toISOString().slice(0, 10);
   const app = meta.app ?? resultados.find((r) => r.tipo === 'web')?.objetivo ?? resultados[0]?.objetivo ?? '';
   // Los textos pueden venir en los dos idiomas ({es, en}) o, si los escribió el auditor, como texto.
-  const frases = (campo) => resultados.flatMap((r) => (r[campo] ?? []).map((x) => (typeof x === 'string' ? x : x[L])));
+  const frases = (campo) => resultados.flatMap((r) => (Array.isArray(r[campo]) ? r[campo] : []).map((x) => (typeof x === 'string' ? x : String(x?.[L] ?? ''))).filter(Boolean));
   const avisos = frases('avisos');
   const hayGraves = cuenta.critica + cuenta.alta > 0;
   // Con avisos y sin hallazgos graves, lo honesto es decir que no se puede concluir.
   const veredicto = hayGraves ? t.veredictoGrave : avisos.length ? t.veredictoNoConcluyente : !hallazgos.length ? t.sinHallazgos : cuenta.media > 0 ? t.veredictoMedio : t.veredictoLeve;
-  const aisl = resultados.find((r) => r.tipo === 'aislamiento');
-  const repo = resultados.find((r) => r.tipo === 'repo');
+  // Si se pasan varios resultados del mismo tipo, sus tablas se suman.
+  const matriz = resultados.filter((r) => r.tipo === 'aislamiento').flatMap((r) => (Array.isArray(r.matriz) ? r.matriz : []));
+  const inventario = resultados.filter((r) => r.tipo === 'repo').flatMap((r) => (Array.isArray(r.inventario) ? r.inventario : []));
   const web = resultados.find((r) => r.tipo === 'web');
   const hayDatosExpuestos = hallazgos.some((h) => ['S-TABLA-LEGIBLE-ANON', 'A-LECTURA-CRUZADA', 'A-ESCRITURA-CRUZADA', 'S-BUCKET-LISTABLE'].includes(h.id));
   const requiereAutorizacion = resultados.some((r) => r.tipo === 'web' || r.tipo === 'aislamiento');
@@ -202,29 +220,29 @@ export function generarInforme(resultados, meta = {}) {
     .join('');
 
   const filasAlcance = resultados
-    .map((r) => `<tr><td>${esc(t.tipo[r.tipo] ?? r.tipo)}</td><td><code>${esc(r.objetivo)}</code></td><td>${esc((r.fin ?? '').slice(0, 16).replace('T', ' '))} UTC${r.peticiones ? ` · ${r.peticiones} ${t.peticiones}` : ''}</td></tr>`)
+    .map((r) => `<tr><td>${esc(t.tipo[r.tipo] ?? r.tipo)}</td><td><code>${esc(r.objetivo)}</code></td><td>${esc(String(r.fin ?? '').slice(0, 16).replace('T', ' '))} UTC${Number(r.peticiones) > 0 ? ` · ${numero(r.peticiones)} ${t.peticiones}` : ''}</td></tr>`)
     .join('');
 
-  const seccionMatriz = aisl?.matriz?.length
+  const seccionMatriz = matriz.length
     ? `<section><h2>${t.matriz}</h2><p>${t.matrizIntro}</p>
       <table><thead><tr><th>${t.tabla}</th><th>${t.dueno}</th><th>${t.filasA}</th><th>${t.filasB}</th><th>${t.resultado}</th><th>${t.escritura}</th></tr></thead><tbody>
-      ${aisl.matriz
+      ${matriz
         .map(
           (m) =>
-            `<tr><td><code>${esc(m.tabla)}</code></td><td>${m.columnaDueno ? `<code>${esc(m.columnaDueno)}</code>` : '—'}</td><td>${m.A ?? '—'}</td><td>${m.B ?? '—'}</td><td class="r-${m.resultado}">${esc(t.res[m.resultado] ?? m.resultado)}</td><td class="r-${m.escritura ?? ''}">${m.escritura ? esc(t.res[m.escritura]) : '—'}</td></tr>`,
+            `<tr><td><code>${esc(m.tabla)}</code></td><td>${m.columnaDueno ? `<code>${esc(m.columnaDueno)}</code>` : '—'}</td><td>${numero(m.A)}</td><td>${numero(m.B)}</td><td class="r-${clase(m.resultado)}">${esc(t.res[m.resultado] ?? m.resultado)}</td><td class="r-${clase(m.escritura)}">${m.escritura ? esc(t.res[m.escritura] ?? m.escritura) : '—'}</td></tr>`,
         )
         .join('')}
       </tbody></table></section>`
     : '';
 
-  const seccionInventario = repo?.inventario?.length
+  const seccionInventario = inventario.length
     ? `<section><h2>${t.inventario}</h2><table><thead><tr><th>${t.tabla}</th><th>${t.rls}</th><th>${t.politicas}</th></tr></thead><tbody>
-      ${repo.inventario.map((x) => `<tr><td><code>${esc(x.tabla)}</code></td><td class="${x.rls ? '' : 'r-fuga'}">${x.rls ? t.si : t.no}</td><td>${x.politicas}</td></tr>`).join('')}
+      ${inventario.map((x) => `<tr><td><code>${esc(x.tabla)}</code></td><td class="${x.rls ? '' : 'r-fuga'}">${x.rls ? t.si : t.no}</td><td>${numero(x.politicas)}</td></tr>`).join('')}
       </tbody></table></section>`
     : '';
 
   const sup = web?.superficie;
-  const itemsSuperficie = sup ? [['RPC', sup.rpc], ['Edge Functions', sup.funciones], ['Storage', sup.buckets]].filter(([, xs]) => xs?.length) : [];
+  const itemsSuperficie = sup ? [['RPC', sup.rpc], ['Edge Functions', sup.funciones], ['Storage', sup.buckets]].filter(([, xs]) => Array.isArray(xs) && xs.length) : [];
   const seccionSuperficie = itemsSuperficie.length
     ? `<section><h2>${t.superficie}</h2><p>${t.superficieIntro}</p><ul>${itemsSuperficie.map(([n, xs]) => `<li><b>${n}:</b> ${xs.map((x) => `<code>${esc(x)}</code>`).join(', ')}</li>`).join('')}</ul></section>`
     : '';
@@ -339,5 +357,6 @@ export function resumenTexto(resultado, idioma = 'es') {
   const lineas = hallazgos.map((h) => `  [${ETIQUETA_GRAVEDAD[idioma][h.gravedad].toUpperCase().padEnd(11)}] ${h.titulo} — ${h.donde}`);
   const totales = GRAVEDADES.filter((g) => cuenta[g]).map((g) => `${cuenta[g]} ${ETIQUETA_GRAVEDAD[idioma][g].toLowerCase()}`).join(', ');
   const avisos = (resultado.avisos ?? []).map((a) => `  ! NO CONCLUYENTE: ${a[idioma]}`);
+  // (Quien imprime esto en la terminal quita antes los caracteres de control.)
   return [`${hallazgos.length} hallazgo(s)${totales ? `: ${totales}` : ''}`, ...lineas, ...avisos].join('\n');
 }

@@ -222,8 +222,8 @@ export const CATALOGO = {
       en: 'The most common flaw: RLS shows as "enabled" everywhere, but any registered user reaches everyone’s rows. Signing up is usually free.',
     },
     arreglo: {
-      es: 'drop policy "{politica}" on public.{tabla};\ncreate policy "solo lo propio" on public.{tabla} for {comando} to authenticated using ((select auth.uid()) = user_id);\nVerifícalo con la prueba de aislamiento (cerrojo aislamiento).',
-      en: 'drop policy "{politica}" on public.{tabla};\ncreate policy "own rows only" on public.{tabla} for {comando} to authenticated using ((select auth.uid()) = user_id);\nVerify with the isolation test (cerrojo aislamiento).',
+      es: 'drop policy "{politica}" on public.{tabla};\ncreate policy "leer lo propio" on public.{tabla} for select to authenticated using ((select auth.uid()) = user_id);\ncreate policy "crear lo propio" on public.{tabla} for insert to authenticated with check ((select auth.uid()) = user_id);\ncreate policy "modificar lo propio" on public.{tabla} for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);\ncreate policy "borrar lo propio" on public.{tabla} for delete to authenticated using ((select auth.uid()) = user_id);\nCrea solo las que la app necesite y verifícalo con la prueba de aislamiento (cerrojo aislamiento).',
+      en: 'drop policy "{politica}" on public.{tabla};\ncreate policy "read own" on public.{tabla} for select to authenticated using ((select auth.uid()) = user_id);\ncreate policy "insert own" on public.{tabla} for insert to authenticated with check ((select auth.uid()) = user_id);\ncreate policy "update own" on public.{tabla} for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);\ncreate policy "delete own" on public.{tabla} for delete to authenticated using ((select auth.uid()) = user_id);\nCreate only the ones the app needs and verify with the isolation test (cerrojo aislamiento).',
     },
     detalle: (d, L) => (L === 'es' ? `Política "${d.politica}" (${d.comando}, roles: ${lista(d.roles)}) con condición: ${d.expresion}. ${d.archivo}` : `Policy "${d.politica}" (${d.comando}, roles: ${lista(d.roles)}) with condition: ${d.expresion}. ${d.archivo}`),
   },
@@ -246,7 +246,12 @@ export const CATALOGO = {
       es: 'Mueve esas columnas a otra tabla sin política de update, o revoca el update de columna:\nrevoke update on public.{tabla} from authenticated;\ngrant update (<columnas inofensivas>) on public.{tabla} to authenticated;',
       en: 'Move those columns to another table with no update policy, or revoke column update:\nrevoke update on public.{tabla} from authenticated;\ngrant update (<harmless columns>) on public.{tabla} to authenticated;',
     },
-    detalle: (d, L) => (L === 'es' ? `Columnas: ${lista(d.columnas)}. Política de modificación: "${d.politica}". No se ha detectado restricción por columna ni disparador en las migraciones.` : `Columns: ${lista(d.columnas)}. Modifying policy: "${d.politica}". No column-level restriction or trigger found in the migrations.`),
+    detalle: (d, L) => {
+      const disp = d.disparadores?.length ? (L === 'es' ? ` Hay disparadores BEFORE UPDATE (${lista(d.disparadores)}): comprueba si impiden cambiar estas columnas.` : ` There are BEFORE UPDATE triggers (${lista(d.disparadores)}): check whether they prevent changing these columns.`) : '';
+      return L === 'es'
+        ? `Columnas: ${lista(d.columnas)}. Política de modificación: "${d.politica}". Las migraciones no retiran a los usuarios el permiso de UPDATE sobre estas columnas.${disp}`
+        : `Columns: ${lista(d.columnas)}. Modifying policy: "${d.politica}". The migrations do not revoke users’ UPDATE permission on these columns.${disp}`;
+    },
   },
   'R-FUNCION-DEFINER': {
     titulo: { es: 'Función SECURITY DEFINER sin search_path fijo', en: 'SECURITY DEFINER function without a fixed search_path' },
@@ -258,7 +263,7 @@ export const CATALOGO = {
     titulo: { es: 'Vista que puede saltarse RLS', en: 'View that may bypass RLS' },
     porque: { es: 'Por defecto una vista consulta las tablas con los permisos de su creador, ignorando las políticas RLS del usuario que la lee.', en: 'By default a view queries tables with its creator’s rights, ignoring the reading user’s RLS policies.' },
     arreglo: { es: 'create or replace view public.{tabla} with (security_invoker = on) as ...', en: 'create or replace view public.{tabla} with (security_invoker = on) as ...' },
-    detalle: (d) => `${d.archivo}`,
+    detalle: (d, L) => (d.materializada ? (L === 'es' ? `Vista materializada (RLS no se aplica a su contenido). ${d.archivo}` : `Materialized view (RLS does not apply to its contents). ${d.archivo}`) : `${d.archivo}`),
   },
   'R-BUCKET-PUBLICO': {
     titulo: { es: 'Bucket de almacenamiento creado como público', en: 'Storage bucket created as public' },

@@ -36,7 +36,7 @@ begin
   end;
 
   -- Caso 1 · sin RLS: A tiene 2 filas, B tiene 3.
-  insert into public.cv_sin_rls (user_id, token_falso) values
+  insert into public.cv_sin_rls (user_id, api_key) values
     (a, 'sintetico-a-1'), (a, 'sintetico-a-2'),
     (b, 'sintetico-b-1'), (b, 'sintetico-b-2'), (b, 'sintetico-b-3');
 

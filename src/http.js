@@ -71,11 +71,15 @@ function clasificarV6(ip) {
   if (ceros(5) && g[5] === 0xffff) return clasificarV4(incrustada);
   if (ceros(6)) return clasificarV4(incrustada) === 'publica' ? 'privada' : clasificarV4(incrustada);
   if (g[0] === 0x64 && g[1] === 0xff9b) return clasificarV4(incrustada) === 'publica' ? 'privada' : clasificarV4(incrustada);
-  if ((g[0] & 0xfe00) === 0xfc00) return 'privada'; // fc00::/7  (red local única)
-  if ((g[0] & 0xffc0) === 0xfe80) return 'privada'; // fe80::/10 (enlace local)
-  if ((g[0] & 0xff00) === 0xff00) return 'privada'; // ff00::/8  (multidifusión)
+  // Mecanismos de transición que llevan una IPv4 dentro: SIIT (::ffff:0:a.b.c.d), 6to4
+  // (2002:AABB:CCDD::/48) y Teredo (2001:0::/32). No hay motivo legítimo para usarlos aquí.
+  if (ceros(4) && g[4] === 0xffff && g[5] === 0) return 'privada';
+  if (g[0] === 0x2002) return 'privada';
+  if (g[0] === 0x2001 && g[1] === 0) return 'privada';
   if (g[0] === 0x2001 && g[1] === 0x0db8) return 'privada'; // documentación
-  return 'publica';
+  // Solo es pública la unidifusión global (2000::/3). Todo lo demás —red local única (fc00::/7),
+  // enlace local (fe80::/10), multidifusión (ff00::/8), rangos reservados— se rechaza.
+  return (g[0] & 0xe000) === 0x2000 ? 'publica' : 'privada';
 }
 
 /** @returns {'publica'|'loopback'|'privada'} */
@@ -223,6 +227,9 @@ export class Cliente {
           }
           const codificacion = String(res.headers['content-encoding'] ?? '').toLowerCase();
           const descompresor = { gzip: zlib.createGunzip, 'x-gzip': zlib.createGunzip, deflate: zlib.createInflate, br: zlib.createBrotliDecompress }[codificacion];
+          // pipe() no propaga los errores del origen: sin este manejador, un corte de conexión
+          // a mitad de una respuesta comprimida tiraría el proceso.
+          res.on('error', (e) => (cerrado ? null : (clearTimeout(reloj), rechazar(e))));
           const flujo = descompresor ? res.pipe(descompresor()) : res;
           const trozos = [];
           let recibidos = 0;

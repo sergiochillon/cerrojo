@@ -1,12 +1,12 @@
 // Revisión estática de un repositorio: migraciones SQL de Supabase y código de la app.
 // Todo se hace en local; no se envía nada a ningún sitio.
 
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join, relative, basename, sep } from 'node:path';
+import { readdirSync, readFileSync, statSync, lstatSync, existsSync } from 'node:fs';
+import { join, relative, basename, dirname, sep } from 'node:path';
 import { hallazgo } from './catalogo.js';
 import { extraer } from './extraer.js';
-import { modeloVacio, aplicarMigracion, esSiempreCierta, soloExigeSesion, usaMetadatosDeUsuario } from './sql.js';
-import { ahoraIso, categoriasSensibles, RE_COLUMNA_PRIVILEGIO } from './util.js';
+import { modeloVacio, aplicarMigracion, clasificarCondicion, usaMetadatosDeUsuario } from './sql.js';
+import { ahoraIso, categoriasSensibles, gravedadPorCategorias, RE_COLUMNA_PRIVILEGIO } from './util.js';
 
 const IGNORAR = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', '.output', '.vercel', '.netlify', 'coverage', '.turbo', '.cache', 'vendor', '.svelte-kit']);
 const EXT_CODIGO = /\.(m?[jt]sx?|cjs|vue|svelte|astro|html)$/i;
@@ -34,7 +34,10 @@ function* recorrer(dir, raiz = dir) {
 
 function leer(ruta, max = 1_500_000) {
   try {
-    if (statSync(ruta).size > max) return null;
+    // Solo archivos normales: un enlace simbólico podría apuntar fuera del repositorio y una
+    // tubería (FIFO) dejaría la lectura esperando para siempre.
+    const st = lstatSync(ruta);
+    if (!st.isFile() || st.size > max) return null;
     return readFileSync(ruta, 'utf8');
   } catch {
     return null;
@@ -52,6 +55,7 @@ export function auditarRepo(dir) {
   const hallazgos = [];
   const superadas = [];
   const notas = [];
+  const avisos = [];
   const archivos = [...recorrer(dir)];
 
   // ───────────── 1. Migraciones SQL ─────────────
@@ -63,71 +67,102 @@ export function auditarRepo(dir) {
   }
 
   const inventario = [];
+  const sinDeclarar = [];
   for (const t of modelo.tablas.values()) {
-    const [esquema, nombre] = t.nombre.split('.');
-    const esPublica = esquema === 'public' && t.declarada;
+    const corte = t.nombre.indexOf('.');
+    const esquema = t.nombre.slice(0, corte);
+    const nombre = t.nombre.slice(corte + 1);
+    const enPublic = esquema === 'public';
     // Solo se evalúan las tablas de la app (public) y las políticas de archivos (storage.objects).
-    if (!esPublica && t.nombre !== 'storage.objects') continue;
-    if (esPublica) {
-      const cats = categoriasSensibles([nombre, ...t.columnas]);
-      inventario.push({ tabla: nombre, rls: t.rls, politicas: t.politicas.length });
-      if (!t.rls) {
-        hallazgos.push(
-          t.rlsDesactivado
-            ? hallazgo('R-RLS-DESACTIVADO', 'critica', t.nombre, { tabla: nombre, archivo: t.rlsDesactivado })
-            : hallazgo('R-SIN-RLS', cats.length ? 'critica' : 'alta', t.nombre, { tabla: nombre, archivo: t.archivo, columnas: t.columnas }),
-        );
+    if (!enPublic && t.nombre !== 'storage.objects') continue;
+    const cats = categoriasSensibles([nombre, ...t.columnas]);
+    if (enPublic) {
+      if (t.declarada) inventario.push({ tabla: nombre, rls: t.rls, politicas: t.politicas.length });
+      else sinDeclarar.push(nombre); // mencionada en las migraciones pero creada fuera de ellas
+      if (t.rlsDesactivado) {
+        hallazgos.push(hallazgo('R-RLS-DESACTIVADO', 'critica', t.nombre, { tabla: nombre, archivo: t.rlsDesactivado }));
         continue;
       }
-      if (!t.politicas.length) hallazgos.push(hallazgo('R-RLS-SIN-POLITICAS', 'info', t.nombre, { tabla: nombre, archivo: t.archivo }));
+      if (t.declarada && !t.rls) {
+        hallazgos.push(hallazgo('R-SIN-RLS', cats.length ? 'critica' : 'alta', t.nombre, { tabla: nombre, archivo: t.archivo, columnas: t.columnas }));
+        continue;
+      }
+      if (t.declarada && !t.politicas.length) hallazgos.push(hallazgo('R-RLS-SIN-POLITICAS', 'info', t.nombre, { tabla: nombre, archivo: t.archivo }));
     }
 
-    const sensibles = categoriasSensibles([nombre, ...t.columnas]);
     for (const p of t.politicas) {
       if (p.restrictiva) continue;
       const base = { tabla: nombre, politica: p.nombre, comando: p.comando, roles: p.roles, archivo: p.archivo };
       const abiertoATodos = p.roles.some((r) => r === 'public' || r === 'anon');
-      // Condición que gobierna cada operación: INSERT usa WITH CHECK; el resto, USING.
-      const condicion = p.comando === 'insert' ? p.check : p.using ?? p.check;
-      const escribe = p.comando !== 'select';
-
       if (usaMetadatosDeUsuario(p.using) || usaMetadatosDeUsuario(p.check)) {
         hallazgos.push(hallazgo('R-POLITICA-METADATOS-USUARIO', 'alta', t.nombre, { ...base, expresion: [p.using, p.check].filter(Boolean).join(' / ') }));
       }
-      // En PostgreSQL una política sin condición equivale a "true".
-      const siempre = condicion == null || esSiempreCierta(condicion);
-      const expresion = condicion ?? '(sin condición = true)';
-      if (siempre && abiertoATodos) {
-        if (escribe) {
-          hallazgos.push(hallazgo('R-POLITICA-ESCRITURA-ABIERTA', p.comando === 'insert' ? 'media' : 'critica', t.nombre, { ...base, expresion }));
-        } else {
-          hallazgos.push(hallazgo('R-POLITICA-LECTURA-ABIERTA', sensibles.length ? 'alta' : 'media', t.nombre, { ...base, expresion }));
-        }
-      } else if (siempre || soloExigeSesion(condicion)) {
-        // true limitado a "authenticated", o condición del tipo auth.uid() is not null.
-        const grave = escribe && p.comando !== 'insert' ? 'alta' : sensibles.length ? 'alta' : 'media';
+
+      // Qué condición gobierna cada operación:
+      //   SELECT y DELETE → USING;  INSERT → WITH CHECK;
+      //   UPDATE y ALL    → USING (qué filas) y WITH CHECK (cómo pueden quedar; si falta, USING).
+      // Una política sin condición equivale a "true".
+      const condiciones = [];
+      const anotar = (que, expr, escribe) => condiciones.push({ texto: expr == null ? `${que}: (sin condición = true)` : `${que} (${expr})`, clase: clasificarCondicion(expr), escribe });
+      if (p.comando === 'select') anotar('using', p.using, false);
+      if (p.comando === 'delete') anotar('using', p.using, true);
+      if (p.comando === 'insert') anotar('with check', p.check, true);
+      if (p.comando === 'update' || p.comando === 'all') {
+        anotar('using', p.using, true);
+        anotar('with check', p.check ?? p.using, true);
+      }
+      const abiertas = condiciones.filter((c) => c.clase === 'cierta');
+      const deSesion = condiciones.filter((c) => c.clase === 'sesion' || c.clase === 'sesion-o-mas');
+      const flojas = [...abiertas, ...deSesion];
+      if (!flojas.length) continue;
+      const expresion = [...new Set(flojas.map((c) => c.texto))].join(' · ');
+      const escribe = flojas.some((c) => c.escribe);
+      // Si USING restringe y solo falla WITH CHECK, no se puede tocar lo ajeno, pero sí crear
+      // filas a nombre de otro o reasignar las propias: grave, un escalón por debajo.
+      const soloCheck = escribe && flojas.every((c) => c.texto.startsWith('with check')) && p.comando !== 'insert';
+      const soloInserta = p.comando === 'insert';
+
+      if (abiertas.length && abiertoATodos) {
+        if (escribe) hallazgos.push(hallazgo('R-POLITICA-ESCRITURA-ABIERTA', soloInserta ? 'media' : soloCheck ? 'alta' : 'critica', t.nombre, { ...base, expresion }));
+        else hallazgos.push(hallazgo('R-POLITICA-LECTURA-ABIERTA', gravedadPorCategorias(cats), t.nombre, { ...base, expresion }));
+      } else {
+        // "true" limitado a usuarios registrados, o condición del tipo auth.uid() is not null.
+        const grave = escribe && !soloInserta ? 'alta' : cats.length ? 'alta' : 'media';
         hallazgos.push(hallazgo('R-POLITICA-SOLO-AUTENTICADO', grave, t.nombre, { ...base, expresion }));
       }
     }
 
-    if (esquema === 'public') {
+    if (enPublic) {
       const privilegio = t.columnas.filter((c) => RE_COLUMNA_PRIVILEGIO.test(c));
       const modifica = t.politicas.find((p) => !p.restrictiva && (p.comando === 'update' || p.comando === 'all'));
-      const checkMencionaColumna = modifica && privilegio.some((c) => new RegExp(`\\b${c}\\b`, 'i').test(modifica.check ?? ''));
-      if (privilegio.length && modifica && !t.restriccionColumnas && !t.disparadorUpdate && !checkMencionaColumna) {
-        hallazgos.push(hallazgo('R-COLUMNA-PRIVILEGIO-EDITABLE', 'alta', t.nombre, { tabla: nombre, columnas: privilegio, politica: modifica.nombre }));
+      const checkMencionaColumna = modifica && privilegio.some((c) => new RegExp(`\\b${c.replace(/[^A-Za-z0-9_]/g, '')}\\b`, 'i').test(modifica.check ?? ''));
+      // Solo cuenta como protección haber retirado UPDATE a los usuarios y no haberlo devuelto
+      // sobre esas columnas. Un trigger cualquiera (p. ej. el de updated_at) no protege nada.
+      const protegidas = t.updateRevocado && !privilegio.some((c) => (t.updateColumnas ?? []).includes(c));
+      if (privilegio.length && modifica && !protegidas && !checkMencionaColumna) {
+        const otros = t.disparadoresUpdate.filter((d) => !/updated|modtime|moddatetime|timestamp|touch/i.test(`${d.nombre} ${d.funcion}`)).map((d) => d.nombre);
+        hallazgos.push(hallazgo('R-COLUMNA-PRIVILEGIO-EDITABLE', otros.length ? 'media' : 'alta', t.nombre, { tabla: nombre, columnas: privilegio, politica: modifica.nombre, disparadores: otros }));
       }
     }
   }
 
   for (const v of modelo.vistas.values()) {
-    if (v.nombre.startsWith('public.') && !v.invoker) hallazgos.push(hallazgo('R-VISTA-SIN-INVOKER', 'media', v.nombre, { tabla: v.nombre.slice(7), archivo: v.archivo }));
+    if (v.nombre.startsWith('public.') && !v.invoker) hallazgos.push(hallazgo('R-VISTA-SIN-INVOKER', 'media', v.nombre, { tabla: v.nombre.slice(7), archivo: v.archivo, materializada: v.materializada }));
   }
   for (const f of modelo.funciones) {
     if (f.definer && !f.searchPath) hallazgos.push(hallazgo('R-FUNCION-DEFINER', f.nombre.startsWith('public.') ? 'media' : 'baja', f.nombre, { funcion: f.nombre, archivo: f.archivo }));
   }
   for (const b of modelo.buckets) {
     if (b.publico) hallazgos.push(hallazgo('R-BUCKET-PUBLICO', BUCKET_SENSIBLE.test(b.id) ? 'media' : 'info', `storage/${b.id}`, { tabla: b.id, archivo: b.archivo }));
+  }
+  if (sinDeclarar.length) {
+    avisos.push({
+      es: `Las migraciones mencionan tablas que no crean (${sinDeclarar.join(', ')}): se hicieron desde el panel. De ellas solo se han podido revisar las políticas que sí están en el repositorio; no se sabe si tienen RLS activado. Exporta el esquema (supabase db dump --schema public) y repite.`,
+      en: `The migrations reference tables they do not create (${sinDeclarar.join(', ')}): they were made from the dashboard. Only the policies present in the repository could be reviewed; whether RLS is enabled is unknown. Export the schema (supabase db dump --schema public) and re-run.`,
+    });
+  }
+  if (modelo.omitidas) {
+    notas.push({ es: `${modelo.omitidas} sentencia(s) SQL de más de 100.000 caracteres no se analizaron (volcados de datos).`, en: `${modelo.omitidas} SQL statement(s) over 100,000 characters were not analysed (data dumps).` });
   }
 
   if (!sqls.length) {
@@ -146,7 +181,7 @@ export function auditarRepo(dir) {
 
   // ───────────── 2. Código y configuración ─────────────
   const gitignore = leer(join(dir, '.gitignore')) ?? '';
-  const envIgnorado = /^\s*\.env(\*|\..*)?\s*$/m.test(gitignore);
+  const envIgnorado = /^\s*\/?\.env(\*|\..*)?\s*$/m.test(gitignore);
   const variablesVistas = new Set();
   let secretosEnCodigo = 0;
 
@@ -159,6 +194,7 @@ export function auditarRepo(dir) {
     const texto = leer(a.ruta);
     if (texto == null) continue;
 
+    if (esEnv && envIgnorado) continue; // no forma parte del repositorio
     if (esEnv) {
       const lineas = texto.split('\n').filter((l) => /^\s*[A-Z][A-Z0-9_]*\s*=\s*\S/.test(l));
       const privadas = lineas.filter((l) => !/^\s*(VITE|NEXT_PUBLIC|REACT_APP|PUBLIC|EXPO_PUBLIC|NUXT_PUBLIC)_/.test(l));
@@ -171,7 +207,8 @@ export function auditarRepo(dir) {
       for (const m of texto.matchAll(/^\[functions\.([A-Za-z0-9_-]+)\]([^[]*)/gm)) {
         if (!/^\s*verify_jwt\s*=\s*false/m.test(m[2])) continue;
         // Si la función valida por su cuenta (firma de webhook, getUser…), es solo informativo.
-        const codigo = leer(join(dir, 'supabase', 'functions', m[1], 'index.ts')) ?? '';
+        // Las funciones cuelgan de la misma carpeta "supabase" que este config.toml (monorepos).
+        const codigo = leer(join(dirname(a.ruta), 'functions', m[1], 'index.ts')) ?? '';
         hallazgos.push(hallazgo('C-FUNCION-SIN-JWT', RE_COMPRUEBA_IDENTIDAD.test(codigo) ? 'info' : 'media', a.rel, { funcion: m[1], archivo: a.rel }));
       }
       continue;
@@ -184,7 +221,9 @@ export function auditarRepo(dir) {
       hallazgos.push(hallazgo('C-SECRETO-EN-REPO', 'critica', a.rel, { tipo: s.tipo, archivo: a.rel, linea: lineaDe(texto, indice), muestra: s.muestra }));
     }
 
-    for (const m of texto.matchAll(/\b((?:VITE|NEXT_PUBLIC|REACT_APP|EXPO_PUBLIC|NUXT_PUBLIC|PUBLIC)_[A-Z0-9_]*(?:SECRET|SERVICE_ROLE|PRIVATE_KEY|PASSWORD|OPENAI|ANTHROPIC|API_SECRET)[A-Z0-9_]*)\b/g)) {
+    // El nombre debe decir que es un secreto: …_SECRET, …SERVICE_ROLE…, …PRIVATE_KEY, …_PASSWORD,
+    // o la clave de un proveedor de pago por uso. Una URL o el nombre de un modelo no lo son.
+    for (const m of texto.matchAll(/\b((?:VITE|NEXT_PUBLIC|REACT_APP|EXPO_PUBLIC|NUXT_PUBLIC|PUBLIC)_[A-Z0-9_]{0,60}(?:SECRET(?:_KEY)?|SERVICE_ROLE(?:_KEY)?|PRIVATE_KEY|PASSWORD|(?:OPENAI|ANTHROPIC|GEMINI|MISTRAL|RESEND|SENDGRID|TWILIO)_(?:API_)?KEY|API_SECRET))\b/g)) {
       if (variablesVistas.has(m[1])) continue;
       variablesVistas.add(m[1]);
       hallazgos.push(hallazgo('C-ENV-PUBLICA-SECRETA', 'critica', a.rel, { variable: m[1], archivo: a.rel, linea: lineaDe(texto, m.index) }));
@@ -221,6 +260,7 @@ export function auditarRepo(dir) {
     hallazgos,
     superadas,
     notas,
+    avisos,
     inventario: inventario.sort((a, b) => a.tabla.localeCompare(b.tabla)),
   };
 }

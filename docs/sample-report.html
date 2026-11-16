@@ -42,6 +42,7 @@
   .r-fuga { color:var(--critica); font-weight:700; } .r-aislada { color:var(--bien); font-weight:600; }
   ul { margin:0 0 12px; padding-left: 20px; } li { margin-bottom:6px; }
   .ok li::marker { content: "✓  "; color: var(--bien); }
+  .avisos { background:#fff8e6; border:1px solid #e3c770; border-left:5px solid var(--media); border-radius:6px; padding:14px 18px 8px 36px; }
   footer { margin-top:48px; padding-top:12px; border-top:1px solid var(--linea); color:var(--suave); font-size:13px; }
   @media (max-width: 640px) { .chips { grid-template-columns: repeat(2, 1fr); } dl { grid-template-columns: 1fr; gap:2px 0; } dt { padding-top:8px; } }
   @media print { body { background:#fff; font-size:12px; } main { padding:0; max-width:none; } .hallazgo, .chip, table, .veredicto { box-shadow:none; } h2 { break-after: avoid; } }
@@ -59,9 +60,11 @@
     <p class="veredicto">There are critical or high severity findings. Recommendation: fix them before opening the application to real users, or as soon as possible if it is already in use.</p>
   </section>
 
+  <section><h2>Warnings: what could not be checked</h2><ul class="avisos"><li>Inconclusive for: audit_log, waitlist. Neither test account owns rows there; create data with both accounts and re-run.</li><li>No identifiable owner column in: client_directory (A: 6, B: 6); plans (A: 2, B: 2). Both accounts read rows; confirm manually whether this is shared content.</li></ul></section>
+
   <section>
     <h2>Scope: what was checked</h2>
-    <div class="tabla-ancha"><table><tbody><tr><td>Deployed application (no session)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-14 23:22 UTC · 21 HTTP requests</td></tr><tr><td>User isolation (two test accounts)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-14 23:22 UTC · 26 HTTP requests</td></tr><tr><td>Repository (SQL migrations and code)</td><td><code>app-vulnerable</code></td><td>2026-11-14 23:22 UTC</td></tr></tbody></table></div>
+    <div class="tabla-ancha"><table><tbody><tr><td>Deployed application (no session)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-16 07:18 UTC · 22 HTTP requests</td></tr><tr><td>User isolation (two test accounts)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-16 07:18 UTC · 26 HTTP requests</td></tr><tr><td>Repository (SQL migrations and code)</td><td><code>app-vulnerable</code></td><td>2026-11-16 07:18 UTC</td></tr></tbody></table></div>
     <p style="margin-top:10px"><b>Authorization:</b> The person running the tool declared they own the application or hold written authorization from its owner.</p>
   </section>
 
@@ -135,7 +138,7 @@ If the table must be public, expose only the needed columns through a view.</pre
       <header><span class="etq">Critical</span><h3>7. Third-party secret shipped to the browser</h3></header>
       <dl>
         <dt>Where</dt><dd><code>/assets/index-4f3a9c.js</code></dd>
-        <dt>What was observed</dt><dd>Clave de API de OpenAI in /assets/index-4f3a9c.js: sk-pro…Zwww (48 caracteres)</dd>
+        <dt>What was observed</dt><dd>Clave de API de OpenAI in /assets/index-4f3a9c.js: sk-pro…c-yv (48 caracteres)</dd>
         <dt>Why it matters</dt><dd>A secret key in browser code is public. It can be used at your expense (API usage, charges) or to access data in that service.</dd>
         <dt>How to fix it</dt><dd><pre>Revoke the key in the provider dashboard and create a new one. Move the call to an Edge Function or your server and store the key as a server secret.</pre></dd>
       </dl>
@@ -177,7 +180,7 @@ Re-run this test afterwards.</pre></dd>
       <header><span class="etq">High</span><h3>11. Users can edit their own row, which holds privilege columns</h3></header>
       <dl>
         <dt>Where</dt><dd><code>public.profiles</code></dd>
-        <dt>What was observed</dt><dd>Columns: role, plan. Modifying policy: &quot;Users can update own profile&quot;. No column-level restriction or trigger found in the migrations.</dd>
+        <dt>What was observed</dt><dd>Columns: role, plan. Modifying policy: &quot;Users can update own profile&quot;. The migrations do not revoke users’ UPDATE permission on these columns.</dd>
         <dt>Why it matters</dt><dd>RLS filters rows, not columns. If the update policy lets users modify their row and that row stores role, plan or balance, they can change them from the browser console.</dd>
         <dt>How to fix it</dt><dd><pre>Move those columns to another table with no update policy, or revoke column update:
 revoke update on public.profiles from authenticated;
@@ -188,7 +191,7 @@ grant update (&lt;harmless columns&gt;) on public.profiles to authenticated;</pr
       <header><span class="etq">High</span><h3>12. Policy lets anyone read the whole table</h3></header>
       <dl>
         <dt>Where</dt><dd><code>public.profiles</code></dd>
-        <dt>What was observed</dt><dd>Policy &quot;Profiles are viewable by everyone&quot; (select, roles: public) with condition: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>What was observed</dt><dd>Policy &quot;Profiles are viewable by everyone&quot; (select, roles: public) with condition: using (true). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Why it matters</dt><dd>The condition is always true and also applies to visitors without a session. Only correct for genuinely public content.</dd>
         <dt>How to fix it</dt><dd><pre>If it is not public content:
 drop policy &quot;Profiles are viewable by everyone&quot; on public.profiles;
@@ -208,11 +211,14 @@ create policy &quot;read own&quot; on public.profiles for select to authenticate
       <header><span class="etq">High</span><h3>14. Policy only requires being signed in</h3></header>
       <dl>
         <dt>Where</dt><dd><code>public.clients</code></dd>
-        <dt>What was observed</dt><dd>Policy &quot;Authenticated users can manage clients&quot; (all, roles: authenticated) with condition: auth.uid() is not null. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>What was observed</dt><dd>Policy &quot;Authenticated users can manage clients&quot; (all, roles: authenticated) with condition: using (auth.uid() is not null) · with check (auth.uid() is not null). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Why it matters</dt><dd>The most common flaw: RLS shows as &quot;enabled&quot; everywhere, but any registered user reaches everyone’s rows. Signing up is usually free.</dd>
         <dt>How to fix it</dt><dd><pre>drop policy &quot;Authenticated users can manage clients&quot; on public.clients;
-create policy &quot;own rows only&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
-Verify with the isolation test (cerrojo aislamiento).</pre></dd>
+create policy &quot;read own&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
+create policy &quot;insert own&quot; on public.clients for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy &quot;update own&quot; on public.clients for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy &quot;delete own&quot; on public.clients for delete to authenticated using ((select auth.uid()) = user_id);
+Create only the ones the app needs and verify with the isolation test (cerrojo aislamiento).</pre></dd>
       </dl>
     </article>
     <article class="hallazgo g-alta">
@@ -279,7 +285,7 @@ If the table must be public, expose only the needed columns through a view.</pre
       <header><span class="etq">Medium</span><h3>21. Policy allows unrestricted writes</h3></header>
       <dl>
         <dt>Where</dt><dd><code>public.waitlist</code></dd>
-        <dt>What was observed</dt><dd>Policy &quot;Anyone can join the waitlist&quot; (insert, roles: anon, authenticated) with condition: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>What was observed</dt><dd>Policy &quot;Anyone can join the waitlist&quot; (insert, roles: anon, authenticated) with condition: with check (true). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Why it matters</dt><dd>With an always-true condition on insert/update/delete, whoever reaches the table can create, alter or delete anyone’s rows.</dd>
         <dt>How to fix it</dt><dd><pre>drop policy &quot;Anyone can join the waitlist&quot; on public.waitlist;
 Create separate per-operation policies with using/with check ((select auth.uid()) = user_id).</pre></dd>
@@ -289,7 +295,7 @@ Create separate per-operation policies with using/with check ((select auth.uid()
       <header><span class="etq">Medium</span><h3>22. Policy lets anyone read the whole table</h3></header>
       <dl>
         <dt>Where</dt><dd><code>public.plans</code></dd>
-        <dt>What was observed</dt><dd>Policy &quot;Plans are public&quot; (select, roles: public) with condition: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>What was observed</dt><dd>Policy &quot;Plans are public&quot; (select, roles: public) with condition: using (true). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Why it matters</dt><dd>The condition is always true and also applies to visitors without a session. Only correct for genuinely public content.</dd>
         <dt>How to fix it</dt><dd><pre>If it is not public content:
 drop policy &quot;Plans are public&quot; on public.plans;
@@ -419,11 +425,12 @@ If the table must be public, expose only the needed columns through a view.</pre
       </tbody></table></section>
   <section><h2>Checks passed</h2><ul class="ok"><li>.env files and the .git folder are not publicly served.</li><li>The database schema cannot be queried with the public key.</li><li>Without a session no rows are returned from: audit_log, clients, invoices, waitlist. (This does not prove a signed-in user cannot see others’ rows: that is what the isolation test is for.)</li><li>public.invoices: A owns 2 row(s) and B 1; neither account sees the other’s rows.</li><li>1 SQL file(s) read; 7 table(s) in public, 5 with RLS and policies.</li></ul></section>
   <section><h2>Surface pending manual review</h2><p>Detected elements the tool does not invoke because they may have side effects. They must be reviewed by reading their code.</p><ul><li><b>RPC:</b> <code>is_admin</code></li><li><b>Edge Functions:</b> <code>delete-account</code></li><li><b>Storage:</b> <code>avatars</code>, <code>invoices-pdf</code></li></ul></section>
+  
   <section><h2>Data protection note</h2><p>Some findings indicate user data may have been accessible to third parties. If the application processes personal data of real users, this may constitute a personal data breach under the GDPR (Art. 33), which requires the controller to assess notifying the supervisory authority within 72 hours. This note is not legal advice: consult your data protection officer or legal counsel.</p></section>
 
   <section>
     <h2>Limits of this report</h2>
-    <ul><li>This is a time-boxed review, not a security guarantee or certification.</li><li>Automated checks detect specific classes of flaws (RLS data exposure, published secrets, configuration). They do not cover business logic, payments, or attacks requiring interaction.</li><li>The isolation test is only conclusive for tables where the test accounts own data.</li><li>To check access, the tool downloads database rows (one per table without a session; up to 1,000 per account and table in the isolation test) and analyses them in memory. Their values are not stored in this report or on disk.</li><li>RPC and Edge Functions are not executed: they are reviewed manually.</li><li>Results reflect the state on the stated date. Any later change to tables or policies can introduce new flaws.</li><li>To check whether each table is readable without a session, one row per table was requested with the public key. Received values were discarded; the report only holds counts and column names.</li><li>Detected RPC and Edge Functions are not invoked automatically (they may have side effects). They need manual review.</li><li>Inconclusive for: audit_log, waitlist. Neither test account owns rows there; create data with both accounts and re-run.</li><li>No identifiable owner column in: client_directory (A: 6, B: 6); plans (A: 2, B: 2). Both accounts read rows; confirm manually whether this is shared content.</li><li>The isolation test downloaded 41 full row(s) (cap: 1000 per account and table). They were processed in memory; this report only holds counts and column names.</li><li>The write test ran real UPDATE statements against a local database declared disposable. They set a column to its existing value, but fire triggers and may have modified derived columns (e.g. updated_at).</li><li>Migration analysis reflects what the repository says, not the live database state: changes made from the dashboard do not show up here.</li><li>Code review is pattern-based: it catches typical flaws and does not replace reading the Edge Functions and business logic.</li></ul>
+    <ul><li>This is a time-boxed review, not a security guarantee or certification.</li><li>Automated checks detect specific classes of flaws (RLS data exposure, published secrets, configuration). They do not cover business logic, payments, or attacks requiring interaction.</li><li>The isolation test is only conclusive for tables where the test accounts own data.</li><li>To check access, the tool downloads database rows (one per table without a session; up to 1,000 per account and table in the isolation test) and analyses them in memory. Their values are not stored in this report or on disk.</li><li>RPC and Edge Functions are not executed: they are reviewed manually.</li><li>Results reflect the state on the stated date. Any later change to tables or policies can introduce new flaws.</li><li>To check whether each table is readable without a session, one row per table was requested with the public key. Received values were discarded; the report only holds counts and column names.</li><li>Detected RPC and Edge Functions are not invoked automatically (they may have side effects). They need manual review.</li><li>The isolation test downloaded 41 full row(s) (cap: 1000 per account and table). They were processed in memory; this report only holds counts and column names.</li><li>The write test ran real UPDATE statements against a local database declared disposable. They set a column to its existing value, but fire triggers and may have modified derived columns (e.g. updated_at).</li><li>Migration analysis reflects what the repository says, not the live database state: changes made from the dashboard do not show up here.</li><li>Code review is pattern-based: it catches typical flaws and does not replace reading the Edge Functions and business logic.</li></ul>
   </section>
 
   <footer>Generated with cerrojo · 2026-11-14</footer>

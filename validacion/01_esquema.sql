@@ -58,7 +58,7 @@ grant select on public.cv_marca to anon, authenticated;
 create table public.cv_sin_rls (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
-  token_falso text not null
+  api_key text not null
 );
 alter table public.cv_sin_rls disable row level security;
 grant select, insert, update, delete on public.cv_sin_rls to anon, authenticated;

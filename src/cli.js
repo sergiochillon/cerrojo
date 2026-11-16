@@ -7,7 +7,7 @@ import { probarAislamiento, LIMITE_MAXIMO } from './aislamiento.js';
 import { auditarRepo } from './repo.js';
 import { generarInforme, resumenTexto } from './informe.js';
 import { Cliente, esLoopback } from './http.js';
-import { GRAVEDADES } from './util.js';
+import { GRAVEDADES, sinControl } from './util.js';
 
 const AYUDA = `cerrojo — auditoría de seguridad para apps hechas con IA sobre Supabase
 
@@ -142,7 +142,7 @@ function exigirAutorizacion(op, objetivo) {
 export async function main(argv) {
   const [orden, ...resto] = argv;
   const { pos, op } = parsear(resto);
-  const avisar = (s) => process.stderr.write(`· ${s}\n`);
+  const avisar = (s) => process.stderr.write(`· ${sinControl(s)}\n`);
   let resultado;
 
   if (!orden || orden === 'ayuda' || orden === '--help' || orden === '-h' || op.help) {
@@ -159,6 +159,11 @@ export async function main(argv) {
   } else if (orden === 'aislamiento') {
     const cfg = op.config ? leerJson(op.config) : {};
     const web = op.desde ? leerJson(op.desde) : null;
+    const esObjeto = (x) => x && typeof x === 'object' && !Array.isArray(x);
+    if (!esObjeto(cfg)) throw new Error('El archivo de --config debe contener un objeto JSON.');
+    if (cfg.tablas !== undefined && !Array.isArray(cfg.tablas)) throw new Error('En --config, "tablas" debe ser una lista: ["tabla1", "tabla2"].');
+    for (const u of ['usuarioA', 'usuarioB']) if (cfg[u] !== undefined && !esObjeto(cfg[u])) throw new Error(`En --config, "${u}" debe ser un objeto {"correo", "contrasena"}.`);
+    if (web !== null && !esObjeto(web)) throw new Error('El archivo de --desde no es un resultado de "cerrojo web".');
     const env = process.env;
     const supabaseUrl = cfg.supabaseUrl ?? env.CERROJO_SUPABASE_URL ?? web?.supabase?.url;
     const clave = cfg.clave ?? env.CERROJO_CLAVE ?? web?.supabase?.clavePublica;
@@ -210,7 +215,7 @@ export async function main(argv) {
   }
 
   const ruta = guardar(resolve(op.salida ?? `salida/${resultado.tipo}-${marca()}.json`), JSON.stringify(resultado, null, 2));
-  process.stdout.write(`${resumenTexto(resultado)}\n\nResultado guardado en ${ruta}\n`);
+  process.stdout.write(`${sinControl(resumenTexto(resultado))}\n\nResultado guardado en ${ruta}\n`);
   const graves = resultado.hallazgos.some((h) => h.gravedad === 'critica' || h.gravedad === 'alta');
   return op.ci && graves ? 1 : 0;
 }

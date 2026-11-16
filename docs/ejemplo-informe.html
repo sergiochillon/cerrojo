@@ -42,6 +42,7 @@
   .r-fuga { color:var(--critica); font-weight:700; } .r-aislada { color:var(--bien); font-weight:600; }
   ul { margin:0 0 12px; padding-left: 20px; } li { margin-bottom:6px; }
   .ok li::marker { content: "✓  "; color: var(--bien); }
+  .avisos { background:#fff8e6; border:1px solid #e3c770; border-left:5px solid var(--media); border-radius:6px; padding:14px 18px 8px 36px; }
   footer { margin-top:48px; padding-top:12px; border-top:1px solid var(--linea); color:var(--suave); font-size:13px; }
   @media (max-width: 640px) { .chips { grid-template-columns: repeat(2, 1fr); } dl { grid-template-columns: 1fr; gap:2px 0; } dt { padding-top:8px; } }
   @media print { body { background:#fff; font-size:12px; } main { padding:0; max-width:none; } .hallazgo, .chip, table, .veredicto { box-shadow:none; } h2 { break-after: avoid; } }
@@ -59,9 +60,11 @@
     <p class="veredicto">Hay hallazgos de gravedad crítica o alta. Recomendación: corregirlos antes de abrir la aplicación a usuarios reales, o cuanto antes si ya está en uso.</p>
   </section>
 
+  <section><h2>Avisos: lo que no se ha podido comprobar</h2><ul class="avisos"><li>No concluyente en: audit_log, waitlist. Ninguna de las cuentas de prueba tiene filas propias ahí; crea datos con ambas cuentas y repite la prueba.</li><li>Sin columna de dueño identificable en: client_directory (A: 6, B: 6); plans (A: 2, B: 2). Ambas cuentas leen filas; hay que confirmar a mano si es contenido común.</li></ul></section>
+
   <section>
     <h2>Alcance: qué se ha comprobado</h2>
-    <div class="tabla-ancha"><table><tbody><tr><td>Aplicación desplegada (sin sesión)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-14 23:22 UTC · 21 peticiones HTTP</td></tr><tr><td>Aislamiento entre usuarios (con dos cuentas de prueba)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-14 23:22 UTC · 26 peticiones HTTP</td></tr><tr><td>Repositorio (migraciones SQL y código)</td><td><code>app-vulnerable</code></td><td>2026-11-14 23:22 UTC</td></tr></tbody></table></div>
+    <div class="tabla-ancha"><table><tbody><tr><td>Aplicación desplegada (sin sesión)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-16 07:18 UTC · 22 peticiones HTTP</td></tr><tr><td>Aislamiento entre usuarios (con dos cuentas de prueba)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-16 07:18 UTC · 26 peticiones HTTP</td></tr><tr><td>Repositorio (migraciones SQL y código)</td><td><code>app-vulnerable</code></td><td>2026-11-16 07:18 UTC</td></tr></tbody></table></div>
     <p style="margin-top:10px"><b>Autorización:</b> Quien ejecutó la herramienta declaró ser titular de la aplicación o contar con autorización escrita de su titular.</p>
   </section>
 
@@ -135,7 +138,7 @@ Si la tabla debe ser pública, expón solo las columnas necesarias mediante una 
       <header><span class="etq">Crítica</span><h3>7. Secreto de un servicio externo publicado en el navegador</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>/assets/index-4f3a9c.js</code></dd>
-        <dt>Qué se ha observado</dt><dd>Clave de API de OpenAI en /assets/index-4f3a9c.js: sk-pro…Zwww (48 caracteres)</dd>
+        <dt>Qué se ha observado</dt><dd>Clave de API de OpenAI en /assets/index-4f3a9c.js: sk-pro…c-yv (48 caracteres)</dd>
         <dt>Por qué importa</dt><dd>Una clave secreta en el código del navegador es pública. Puede usarse a tu costa (consumo de API, cobros) o para acceder a datos de ese servicio.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>Revoca la clave en el panel del proveedor y crea otra. Mueve la llamada a una Edge Function o a tu servidor y guarda la clave como secreto de servidor.</pre></dd>
       </dl>
@@ -177,7 +180,7 @@ Vuelve a ejecutar esta prueba después.</pre></dd>
       <header><span class="etq">Alta</span><h3>11. El usuario puede editar una fila propia que contiene columnas de privilegio</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>public.profiles</code></dd>
-        <dt>Qué se ha observado</dt><dd>Columnas: role, plan. Política de modificación: &quot;Users can update own profile&quot;. No se ha detectado restricción por columna ni disparador en las migraciones.</dd>
+        <dt>Qué se ha observado</dt><dd>Columnas: role, plan. Política de modificación: &quot;Users can update own profile&quot;. Las migraciones no retiran a los usuarios el permiso de UPDATE sobre estas columnas.</dd>
         <dt>Por qué importa</dt><dd>RLS filtra filas, no columnas. Si la política de update permite al usuario modificar su fila y esa fila guarda su rol, plan o saldo, puede cambiarlos desde la consola del navegador.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>Mueve esas columnas a otra tabla sin política de update, o revoca el update de columna:
 revoke update on public.profiles from authenticated;
@@ -188,7 +191,7 @@ grant update (&lt;columnas inofensivas&gt;) on public.profiles to authenticated;
       <header><span class="etq">Alta</span><h3>12. Política que permite leer toda la tabla a cualquiera</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>public.profiles</code></dd>
-        <dt>Qué se ha observado</dt><dd>Política &quot;Profiles are viewable by everyone&quot; (select, roles: public) con condición: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Profiles are viewable by everyone&quot; (select, roles: public) con condición: using (true). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Por qué importa</dt><dd>La condición es siempre verdadera y aplica también a visitantes sin sesión. Solo es correcto en tablas de contenido realmente público.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>Si no es contenido público:
 drop policy &quot;Profiles are viewable by everyone&quot; on public.profiles;
@@ -208,11 +211,14 @@ create policy &quot;leer lo propio&quot; on public.profiles for select to authen
       <header><span class="etq">Alta</span><h3>14. Política que solo exige estar registrado</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>public.clients</code></dd>
-        <dt>Qué se ha observado</dt><dd>Política &quot;Authenticated users can manage clients&quot; (all, roles: authenticated) con condición: auth.uid() is not null. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Authenticated users can manage clients&quot; (all, roles: authenticated) con condición: using (auth.uid() is not null) · with check (auth.uid() is not null). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Por qué importa</dt><dd>Es el fallo más frecuente: RLS aparece como &quot;activado&quot; en todos los paneles, pero cualquier usuario registrado accede a las filas de todos. Registrarse suele ser gratis.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>drop policy &quot;Authenticated users can manage clients&quot; on public.clients;
-create policy &quot;solo lo propio&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
-Verifícalo con la prueba de aislamiento (cerrojo aislamiento).</pre></dd>
+create policy &quot;leer lo propio&quot; on public.clients for select to authenticated using ((select auth.uid()) = user_id);
+create policy &quot;crear lo propio&quot; on public.clients for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy &quot;modificar lo propio&quot; on public.clients for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy &quot;borrar lo propio&quot; on public.clients for delete to authenticated using ((select auth.uid()) = user_id);
+Crea solo las que la app necesite y verifícalo con la prueba de aislamiento (cerrojo aislamiento).</pre></dd>
       </dl>
     </article>
     <article class="hallazgo g-alta">
@@ -279,7 +285,7 @@ Si la tabla debe ser pública, expón solo las columnas necesarias mediante una 
       <header><span class="etq">Media</span><h3>21. Política que permite escribir sin restricción</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>public.waitlist</code></dd>
-        <dt>Qué se ha observado</dt><dd>Política &quot;Anyone can join the waitlist&quot; (insert, roles: anon, authenticated) con condición: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Anyone can join the waitlist&quot; (insert, roles: anon, authenticated) con condición: with check (true). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Por qué importa</dt><dd>Con una condición siempre verdadera en insert/update/delete, quien alcance la tabla puede crear, alterar o borrar filas de cualquiera.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>drop policy &quot;Anyone can join the waitlist&quot; on public.waitlist;
 Crea políticas separadas por operación con using/with check ((select auth.uid()) = user_id).</pre></dd>
@@ -289,7 +295,7 @@ Crea políticas separadas por operación con using/with check ((select auth.uid(
       <header><span class="etq">Media</span><h3>22. Política que permite leer toda la tabla a cualquiera</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>public.plans</code></dd>
-        <dt>Qué se ha observado</dt><dd>Política &quot;Plans are public&quot; (select, roles: public) con condición: true. supabase/migrations/20260901100000_esquema_inicial.sql</dd>
+        <dt>Qué se ha observado</dt><dd>Política &quot;Plans are public&quot; (select, roles: public) con condición: using (true). supabase/migrations/20260901100000_esquema_inicial.sql</dd>
         <dt>Por qué importa</dt><dd>La condición es siempre verdadera y aplica también a visitantes sin sesión. Solo es correcto en tablas de contenido realmente público.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>Si no es contenido público:
 drop policy &quot;Plans are public&quot; on public.plans;
@@ -419,11 +425,12 @@ Si la tabla debe ser pública, expón solo las columnas necesarias mediante una 
       </tbody></table></section>
   <section><h2>Comprobaciones superadas</h2><ul class="ok"><li>Los archivos .env y la carpeta .git no se sirven públicamente.</li><li>El esquema de la base de datos no se puede consultar con la clave pública.</li><li>Sin sesión no se obtiene ninguna fila de: audit_log, clients, invoices, waitlist. (Esto no prueba que un usuario registrado no vea filas ajenas: para eso está la prueba de aislamiento.)</li><li>public.invoices: A tiene 2 fila(s) propias y B 1; ninguna cuenta ve filas de la otra.</li><li>1 archivo(s) SQL leídos; 7 tabla(s) en public, 5 con RLS y políticas.</li></ul></section>
   <section><h2>Superficie pendiente de revisión manual</h2><p>Elementos detectados que la herramienta no invoca porque podrían tener efectos. Deben revisarse leyendo su código.</p><ul><li><b>RPC:</b> <code>is_admin</code></li><li><b>Edge Functions:</b> <code>delete-account</code></li><li><b>Storage:</b> <code>avatars</code>, <code>invoices-pdf</code></li></ul></section>
+  
   <section><h2>Nota sobre protección de datos</h2><p>Algunos hallazgos indican que datos de usuarios han podido ser accesibles para terceros. Si la aplicación trata datos personales de usuarios reales, esto puede constituir una brecha de seguridad en el sentido del RGPD (art. 33), que obliga al responsable a valorar su notificación a la autoridad de control en un plazo de 72 horas. Esta nota no es asesoramiento jurídico: consulta con tu delegado de protección de datos o asesor legal.</p></section>
 
   <section>
     <h2>Límites de este informe</h2>
-    <ul><li>Es una revisión acotada en el tiempo, no una garantía de seguridad ni una certificación.</li><li>Las comprobaciones automáticas detectan clases concretas de fallos (exposición de datos por RLS, secretos publicados, configuración). No cubren la lógica de negocio, pagos, ni ataques que requieran interacción.</li><li>La prueba de aislamiento solo es concluyente en tablas donde las cuentas de prueba tienen datos propios.</li><li>Para comprobar el acceso, la herramienta descarga filas de la base de datos (una por tabla sin sesión; hasta 1.000 por cuenta y tabla en la prueba de aislamiento) y las analiza en memoria. Sus valores no se guardan en este informe ni en disco.</li><li>Las funciones RPC y Edge Functions no se ejecutan: su revisión es manual.</li><li>El resultado refleja el estado en la fecha indicada. Cada cambio posterior en tablas o políticas puede introducir fallos nuevos.</li><li>Para saber si cada tabla es legible sin sesión se pidió una fila por tabla con la clave pública. Los valores recibidos se descartaron; en el informe solo constan recuentos y nombres de columna.</li><li>Las funciones RPC y Edge Functions detectadas no se invocan automáticamente (podrían tener efectos). Deben revisarse a mano.</li><li>No concluyente en: audit_log, waitlist. Ninguna de las cuentas de prueba tiene filas propias ahí; crea datos con ambas cuentas y repite la prueba.</li><li>Sin columna de dueño identificable en: client_directory (A: 6, B: 6); plans (A: 2, B: 2). Ambas cuentas leen filas; hay que confirmar a mano si es contenido común.</li><li>Para la prueba de aislamiento se descargaron 41 fila(s) completas (tope: 1000 por cuenta y tabla). Se procesaron en memoria; en este informe solo constan recuentos y nombres de columna.</li><li>La prueba de escritura ejecutó sentencias UPDATE reales sobre una base local declarada desechable. Asignan a una columna el valor que ya tenía, pero disparan triggers y pueden haber modificado columnas derivadas (p. ej. updated_at).</li><li>El análisis de migraciones refleja lo que dice el repositorio, no el estado real de la base de datos: cambios hechos desde el panel no aparecen aquí.</li><li>La revisión de código usa patrones: detecta fallos típicos, no sustituye a leer las Edge Functions y la lógica de negocio.</li></ul>
+    <ul><li>Es una revisión acotada en el tiempo, no una garantía de seguridad ni una certificación.</li><li>Las comprobaciones automáticas detectan clases concretas de fallos (exposición de datos por RLS, secretos publicados, configuración). No cubren la lógica de negocio, pagos, ni ataques que requieran interacción.</li><li>La prueba de aislamiento solo es concluyente en tablas donde las cuentas de prueba tienen datos propios.</li><li>Para comprobar el acceso, la herramienta descarga filas de la base de datos (una por tabla sin sesión; hasta 1.000 por cuenta y tabla en la prueba de aislamiento) y las analiza en memoria. Sus valores no se guardan en este informe ni en disco.</li><li>Las funciones RPC y Edge Functions no se ejecutan: su revisión es manual.</li><li>El resultado refleja el estado en la fecha indicada. Cada cambio posterior en tablas o políticas puede introducir fallos nuevos.</li><li>Para saber si cada tabla es legible sin sesión se pidió una fila por tabla con la clave pública. Los valores recibidos se descartaron; en el informe solo constan recuentos y nombres de columna.</li><li>Las funciones RPC y Edge Functions detectadas no se invocan automáticamente (podrían tener efectos). Deben revisarse a mano.</li><li>Para la prueba de aislamiento se descargaron 41 fila(s) completas (tope: 1000 por cuenta y tabla). Se procesaron en memoria; en este informe solo constan recuentos y nombres de columna.</li><li>La prueba de escritura ejecutó sentencias UPDATE reales sobre una base local declarada desechable. Asignan a una columna el valor que ya tenía, pero disparan triggers y pueden haber modificado columnas derivadas (p. ej. updated_at).</li><li>El análisis de migraciones refleja lo que dice el repositorio, no el estado real de la base de datos: cambios hechos desde el panel no aparecen aquí.</li><li>La revisión de código usa patrones: detecta fallos típicos, no sustituye a leer las Edge Functions y la lógica de negocio.</li></ul>
   </section>
 
   <footer>Generado con cerrojo · 2026-11-14</footer>

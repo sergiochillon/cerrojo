@@ -17,7 +17,12 @@
 import { Cliente, esLoopback } from './http.js';
 import { Supabase } from './supabase.js';
 import { hallazgo } from './catalogo.js';
-import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esIdentificador, esClaveSecreta, AVISO_CLAVE_SECRETA } from './util.js';
+import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esIdentificador, esClaveSecreta, AVISO_CLAVE_SECRETA, sinControl } from './util.js';
+
+// Columnas de auditoría: que el id de una cuenta figure ahí no la hace partícipe de la fila.
+const RE_COLUMNA_AUDITORIA = /^(updated|modified|deleted|approved|reviewed|edited|last_[a-z_]+)_by(_id)?$/i;
+// Orden de preferencia al elegir la columna que identifica al dueño.
+const DUENO_PREFERIDO = ['user_id', 'owner_id', 'owner', 'uid', 'usuario_id', 'propietario_id', 'profile_id', 'account_id', 'author_id', 'created_by'];
 
 /**
  * @param {{
@@ -63,6 +68,7 @@ export async function probarAislamiento(op) {
   const notas = [];
   const avisos = []; // lo que impide concluir; el informe lo destaca
   const matriz = [];
+  const conError = [];
 
   for (const tabla of [...new Set(op.tablas)].filter(esIdentificador).sort()) {
     const vistas = {};
@@ -76,13 +82,17 @@ export async function probarAislamiento(op) {
       vistas[quien] = r;
     }
     if (inaccesible) {
-      matriz.push({ tabla, resultado: inaccesible === 'no_existe' ? 'no_existe' : 'denegada' });
+      // Un error del servidor, un límite de frecuencia o una respuesta cortada NO equivalen a
+      // "acceso denegado": no se sabe qué habría devuelto la tabla.
+      const resultado = inaccesible === 'no_existe' ? 'no_existe' : inaccesible === 'denegado' ? 'denegada' : 'error';
+      if (resultado === 'error') conError.push(tabla);
+      matriz.push({ tabla, resultado });
       continue;
     }
 
     const filas = [...vistas.A.filas, ...vistas.B.filas];
     filasLeidas += filas.length;
-    const columnas = Object.keys(filas[0] ?? {});
+    const columnas = Object.keys(filas[0] ?? {}).slice(0, 200);
     const columnaDueno = detectarColumnaDueno(filas, columnas, sesiones);
     const fila = { tabla, columnaDueno, A: vistas.A.total ?? vistas.A.filas.length, B: vistas.B.total ?? vistas.B.filas.length, resultado: 'no_concluyente' };
 
@@ -94,10 +104,14 @@ export async function probarAislamiento(op) {
       const categorias = categoriasSensibles([tabla, ...columnas]);
       const propias = {};
       let fuga = false;
-      // Una fila "tiene que ver" con un usuario si alguna de sus columnas contiene su id.
-      // Así no se marca como fuga lo que es legítimo: p. ej. un mensaje que B envió a A.
-      const relacionada = (f, id) => columnas.some((c) => f[c] === id);
+      // Una fila "tiene que ver" con un usuario si su id figura en alguna columna que no sea
+      // de auditoría. Así no se marca como fuga lo legítimo (un mensaje que B envió a A), pero
+      // tampoco se oculta una fuga solo porque la cuenta aparezca en updated_by.
+      const columnasRelacion = columnas.filter((c) => !RE_COLUMNA_AUDITORIA.test(c));
+      const relacionada = (f, id) => columnasRelacion.some((c) => f[c] === id);
       const lecturas = [];
+      let compartidas = 0;
+      let sinDuenoVisibles = 0;
       for (const [quien, otro] of [['A', 'B'], ['B', 'A']]) {
         const mias = sesiones[quien].id;
         const suyas = sesiones[otro].id;
@@ -106,11 +120,26 @@ export async function probarAislamiento(op) {
         const filasAjenas = vis.filter((f) => f[columnaDueno] != null && !relacionada(f, mias));
         const delOtro = filasAjenas.filter((f) => relacionada(f, suyas)).length;
         if (filasAjenas.length > 0) lecturas.push({ quien, ajenas: filasAjenas.length, delOtro });
+        // Lo que NO se cuenta como fuga, pero tampoco debe pasar en silencio:
+        compartidas += vis.filter((f) => f[columnaDueno] != null && f[columnaDueno] !== mias && relacionada(f, mias)).length;
+        sinDuenoVisibles = Math.max(sinDuenoVisibles, vis.filter((f) => f[columnaDueno] == null).length);
+      }
+      if (compartidas) {
+        notas.push({
+          es: `public.${tabla}: ${compartidas} lectura(s) de filas de otro dueño que NO se cuentan como fuga porque el id de quien las lee figura en otra columna de la fila. Es lo normal en datos compartidos (mensajes, miembros); confirma que aquí lo es.`,
+          en: `public.${tabla}: ${compartidas} read(s) of rows owned by someone else that are NOT counted as a leak because the reader’s id appears in another column of the row. Normal for shared data (messages, members); confirm that is the case here.`,
+        });
+      }
+      if (sinDuenoVisibles) {
+        avisos.push({
+          es: `public.${tabla}: hay ${sinDuenoVisibles} fila(s) visibles con la columna de dueño (${columnaDueno}) vacía. No se puede saber de quién son: confirma a mano si deben ser comunes.`,
+          en: `public.${tabla}: ${sinDuenoVisibles} visible row(s) have an empty owner column (${columnaDueno}). Whose they are cannot be determined: confirm manually whether they should be shared.`,
+        });
       }
       if (lecturas.length) {
         fuga = true;
         const g = gravedadPorCategorias(categorias);
-        hallazgos.push(hallazgo('A-LECTURA-CRUZADA', pesoGravedad(g) > pesoGravedad('alta') ? 'alta' : g, `public.${tabla}`, { tabla, columna: columnaDueno, lecturas, columnas, categorias }));
+        hallazgos.push(hallazgo('A-LECTURA-CRUZADA', pesoGravedad(g) > pesoGravedad('alta') ? 'alta' : g, `public.${tabla}`, { tabla, columna: sinControl(columnaDueno).slice(0, 80), lecturas, columnas: columnas.map((c) => sinControl(c).slice(0, 80)), categorias }));
       }
       if (fuga) {
         fila.resultado = 'fuga';
@@ -126,12 +155,14 @@ export async function probarAislamiento(op) {
 
       if (op.probarEscritura) {
         const escrituras = [];
+        let sinRespuestaClara = false;
         for (const [quien, otro] of [['A', 'B'], ['B', 'A']]) {
           const r = await sb.actualizarSinCambios(tabla, columnaDueno, sesiones[otro].id, sesiones[quien].token);
           if (r.estado === 'ok' && r.filas > 0) escrituras.push({ quien, filas: r.filas });
+          else if (r.estado === 'error') sinRespuestaClara = true;
         }
         if (escrituras.length) hallazgos.push(hallazgo('A-ESCRITURA-CRUZADA', 'critica', `public.${tabla}`, { tabla, columna: columnaDueno, escrituras }));
-        fila.escritura = escrituras.length ? 'fuga' : 'aislada';
+        fila.escritura = escrituras.length ? 'fuga' : sinRespuestaClara ? 'no_concluyente' : 'aislada';
       }
     }
     if ((vistas.A.total ?? 0) > limite || (vistas.B.total ?? 0) > limite) {
@@ -140,6 +171,12 @@ export async function probarAislamiento(op) {
     matriz.push(fila);
   }
 
+  if (conError.length) {
+    avisos.push({
+      es: `No se pudo comprobar (error del servidor, límite de frecuencia o respuesta demasiado grande): ${conError.join(', ')}. Esas tablas NO figuran como protegidas; repite la prueba, si hace falta con un --limite menor.`,
+      en: `Could not be checked (server error, rate limit or oversized response): ${conError.join(', ')}. Those tables are NOT reported as protected; re-run, with a smaller --limite if needed.`,
+    });
+  }
   const sinDatos = matriz.filter((m) => m.resultado === 'sin_datos').map((m) => m.tabla);
   if (sinDatos.length) {
     avisos.push({
@@ -195,6 +232,6 @@ export async function probarAislamiento(op) {
  */
 function detectarColumnaDueno(filas, columnas, sesiones) {
   const ids = [sesiones.A.id, sesiones.B.id];
-  const conCoincidencia = columnas.filter((c) => filas.some((f) => ids.includes(f[c])));
-  return conCoincidencia.find((c) => RE_COLUMNA_DUENO.test(c)) ?? conCoincidencia[0] ?? null;
+  const conCoincidencia = columnas.filter((c) => !RE_COLUMNA_AUDITORIA.test(c) && filas.some((f) => ids.includes(f[c])));
+  return DUENO_PREFERIDO.find((c) => conCoincidencia.includes(c)) ?? conCoincidencia.find((c) => RE_COLUMNA_DUENO.test(c)) ?? conCoincidencia[0] ?? null;
 }

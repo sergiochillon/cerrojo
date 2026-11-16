@@ -33,6 +33,9 @@ export class Supabase {
     if (!esIdentificador(tabla)) return { estado: 'error', filas: [], total: null, http: 0, mensaje: 'nombre no válido' };
     const r = await this.c.pedir(`${this.url}/rest/v1/${tabla}?select=*&limit=${limite}${filtro ? `&${filtro}` : ''}`, {
       cabeceras: { ...this.cabeceras(token), Prefer: 'count=exact' },
+      // Muchas filas anchas pueden ocupar bastante; si aun así no caben, se declara error
+      // (nunca "sin filas").
+      maxBytes: limite > 1 ? 25_000_000 : 3_000_000,
     });
     return interpretarLectura(r);
   }
@@ -107,15 +110,19 @@ export class Supabase {
       cuerpo: JSON.stringify({ [columna]: idDueno }),
     });
     const filas = json(r.texto);
-    if (r.ok && Array.isArray(filas)) return { estado: 'ok', filas: filas.length };
-    return { estado: r.estado === 401 || r.estado === 403 ? 'denegado' : 'error', filas: 0, http: r.estado };
+    if (r.ok && Array.isArray(filas) && !r.truncada) return { estado: 'ok', filas: filas.length };
+    const denegado = r.estado === 401 || r.estado === 403 || filas?.code === '42501';
+    return { estado: denegado ? 'denegado' : 'error', filas: 0, http: r.estado };
   }
 }
 
 function interpretarLectura(r) {
   const cuerpo = json(r.texto);
   if (r.estado === 200 || r.estado === 206) {
-    const filas = Array.isArray(cuerpo) ? cuerpo : [];
+    // Una respuesta cortada o que no es una lista NO es "cero filas": no se sabe qué había.
+    if (r.truncada) return { estado: 'error', filas: [], total: null, http: r.estado, mensaje: 'respuesta demasiado grande; repite con un --limite menor' };
+    if (!Array.isArray(cuerpo)) return { estado: 'error', filas: [], total: null, http: r.estado, mensaje: 'respuesta con formato inesperado' };
+    const filas = cuerpo.filter((f) => f && typeof f === 'object' && !Array.isArray(f));
     const rango = r.cabeceras?.get('content-range') ?? '';
     const m = rango.match(/\/(\d+)$/);
     return { estado: 'ok', filas, total: m ? Number(m[1]) : null, http: r.estado };

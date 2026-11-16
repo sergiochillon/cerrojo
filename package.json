@@ -12,7 +12,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test test/*.test.js",
     "demo": "node demo/demo.js",
     "demo:servidor": "node demo/servidor.js"
   },

@@ -260,3 +260,26 @@ test('ensayo: el resultado de aislamiento sirve de entrada al informe', async ()
   assert.match(html, /cv_solo_sesion/);
   assert.match(html, /No se probó la escritura cruzada/);
 });
+
+test('validador local: solo admite la propia máquina y la clave pública', async () => {
+  const { leerEstado, motivosLocales, ESPERADO_ESCRITURA } = await import('../validacion/local.js');
+  const estado = leerEstado('API_URL="http://127.0.0.1:54321"\nDB_URL="postgresql://x"\nANON_KEY="clave-publica-local"\nSERVICE_ROLE_KEY="otra"\n');
+  assert.deepEqual(estado, { url: 'http://127.0.0.1:54321', clave: 'clave-publica-local' });
+  assert.deepEqual(motivosLocales(estado), []);
+  assert.equal(leerEstado('API_URL=http://localhost:54321\nPUBLISHABLE_KEY=sb_publishable_local\nANON_KEY=vieja\n').clave, 'sb_publishable_local');
+  for (const url of ['https://abcdefghijklmnopqrst.supabase.co', 'http://192.168.1.20:54321', 'http://10.0.0.5:54321', 'https://staging.midominio.example', undefined]) {
+    assert.match(motivosLocales({ url, clave: 'x' }).join(' '), /nunca se ejecuta contra un proyecto alojado/, String(url));
+  }
+  assert.match(motivosLocales({ url: 'http://127.0.0.1:54321', clave: `sb_secret_${'a'.repeat(24)}` }).join(' '), /es la secreta/);
+  assert.deepEqual(Object.keys(ESPERADO_ESCRITURA).sort(), ['cv_por_dueno', 'cv_sin_rls', 'cv_solo_sesion']);
+  // Ejecutado contra un destino que no es local, no hace nada.
+  const r = spawnSync(process.execPath, [join(RAIZ, 'validacion', 'local.js')], { encoding: 'utf8', env: { ...process.env, CERROJO_SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co', CERROJO_CLAVE: 'sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxx' } });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /No se ha hecho nada/);
+});
+
+test('validador local: la prueba de escritura da lo esperado en el ensayo', async () => {
+  const { ESPERADO_ESCRITURA } = await import('../validacion/local.js');
+  const r = await probarAislamiento({ supabaseUrl: demo.url, clave: demo.claveAnon, tablas: Object.keys(ESPERADO_ESCRITURA), usuarioA: CUENTAS.A, usuarioB: CUENTAS.B, probarEscritura: true, baseDesechable: true, cliente: new Cliente({ pausaMs: 0, permitirLocal: true }) });
+  assert.deepEqual(Object.fromEntries(r.matriz.map((m) => [m.tabla, m.escritura])), ESPERADO_ESCRITURA);
+});

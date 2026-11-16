@@ -1,109 +1,84 @@
-# Material de lanzamiento (preparado, sin publicar)
+# Lanzamiento: qué está publicado y qué no
 
-**No se ha publicado nada**: ni el repositorio, ni la página, ni ningún anuncio. Este documento
-reúne lo que haría falta y lo que hay que comprobar antes.
+## Estado
 
-## 1. Qué hay preparado
+| Pieza | Estado |
+|---|---|
+| Repositorio público con el código, las pruebas y la documentación | Ver la sección "Publicado" |
+| Página del proyecto (`docs/index.html`, GitHub Pages) | Ver la sección "Publicado" |
+| Gig en Fiverr | **No publicado.** Textos en [MARKETPLACES.md](MARKETPLACES.md). |
+| Propuestas en Upwork | **Ninguna enviada.** Textos en [MARKETPLACES.md](MARKETPLACES.md). |
+| Anuncio en redes | **No publicado.** Borradores abajo. |
 
-| Pieza | Dónde | Estado |
-|---|---|---|
-| Código y pruebas | raíz del proyecto | Listo para revisar. Commits solo locales; no hay remoto configurado. |
-| Demo local | `npm run demo`, `npm run demo:servidor` | Funciona sin red ni cuentas. |
-| Informe de ejemplo | [ejemplo-informe.html](ejemplo-informe.html), [sample-report.html](sample-report.html) | Generado con la app ficticia. |
-| Página de presentación | [index.html](index.html) | Borrador. Falta contacto; lleva franja de "borrador". |
-| Oferta y precio | [OFERTA.md](OFERTA.md) | Hipótesis sin contrastar. |
-| Guía de revisión | [GUIA-REVISION-MANUAL.md](GUIA-REVISION-MANUAL.md) | Sin probar en una auditoría real. |
-| Autorización | [AUTORIZACION.md](AUTORIZACION.md) | Modelo orientativo, sin revisión legal. |
+## Publicado
 
-## 2. Lista previa a publicar
+_(Se rellena al publicar; si esta sección sigue así, no se ha publicado nada.)_
 
-Publicar solo cuando **todas** estén marcadas.
+## Condiciones que se comprobaron para publicar el repositorio y la página
 
-**Validación**
+- Gratuito: repositorio público y GitHub Pages, sin planes de pago ni pruebas con renovación.
+- Cuenta ya autenticada con la herramienta oficial (`gh`).
+- Repositorio nuevo, separado de cualquier otro proyecto.
+- Sin secretos: las claves falsas de la demo se generan al arrancar y no están en el código.
+- Sin datos personales: los commits usan la dirección `noreply` de GitHub y la licencia no
+  lleva nombre propio. El nombre de usuario de GitHub es visible, como en cualquier
+  repositorio público.
+- Sin afirmaciones sin respaldo: el README y la página dicen que la herramienta no está
+  validada contra un Supabase real y que el servicio no se ha prestado todavía.
 
-- [ ] Herramienta probada contra un proyecto Supabase real **propio**, con datos ficticios, y
-      corregidas las diferencias con la emulación (ver [LIMITACIONES.md](LIMITACIONES.md), §1).
-- [ ] `npm test` en verde después de esas correcciones.
-- [ ] Al menos una auditoría completa hecha con permiso sobre una app real, para saber si la
-      guía y los tiempos se sostienen.
+## Por qué no se ha publicado una oferta en Fiverr ni se han enviado propuestas
 
-**Contenido**
+1. El servicio no se ha prestado nunca. Publicar hoy un gig con plazos de entrega sería
+   comprometerse a algo cuya duración no se conoce.
+2. La herramienta no está validada contra un Supabase real.
+3. En Upwork enviar una propuesta consume "connects"; no se ha verificado su coste.
+4. Desde la sesión automática, Upwork respondió con una verificación anti-bots y Fiverr no
+   tenía sesión iniciada.
 
-- [ ] Ninguna afirmación sin respaldo: sin "el primero", sin cifras de apps auditadas, sin
-      clientes ni testimonios. Hoy no hay ninguno.
-- [ ] El README sigue diciendo con claridad qué no está validado.
-- [ ] La página deja claro qué no incluye el servicio.
-- [ ] Sustituido `[CONTACTO]` en `index.html` y quitada la franja de borrador.
-- [ ] Decidido el titular de la licencia en `LICENSE` (ahora dice "los autores de cerrojo").
+## Antes de publicar el gig o enviar una propuesta
 
-**Secretos y datos personales**
+- [ ] Validación contra un Supabase local hecha ([../validacion/LOCAL.md](../validacion/LOCAL.md))
+      y diferencias corregidas.
+- [ ] Un trabajo completo hecho sobre una app real, gratis y con permiso
+      ([REPLICA-LOCAL.md](REPLICA-LOCAL.md)), con las horas apuntadas.
+- [ ] Informe de muestra real y anonimizado, o el de la app ficticia presentado como lo que es.
+- [ ] Puedes facturar y tienes unas condiciones con alcance y limitación de responsabilidad.
+- [ ] Has leído "Lo que no se dice nunca" en [MARKETPLACES.md](MARKETPLACES.md).
 
-- [ ] `git log --format='%an <%ae>' | sort -u` muestra solo la dirección `noreply` de GitHub.
-- [ ] Búsqueda de secretos en todo el historial sin resultados (orden en el apartado 5).
-- [ ] La carpeta `salida/` no está versionada y no hay resultados de auditorías reales.
-- [ ] El informe de ejemplo procede de la demo, no de una app real.
+## Borradores de anuncio
 
-**Coste y cuentas**
-
-- [ ] El repositorio es nuevo y público en una cuenta ya autenticada; no se toca ningún otro.
-- [ ] Si se publica la página con GitHub Pages: es gratuita para repositorios públicos.
-      Comprobar que no se activa nada de pago.
-- [ ] Ningún servicio con prueba gratuita que se renueve con cargo.
-
-**Responsabilidad**
-
-- [ ] Poder facturar conforme a la normativa que te aplique.
-- [ ] Condiciones de servicio con alcance y limitación de responsabilidad.
-
-## 3. Textos para el repositorio
-
-**Descripción corta (ES)**
-
-> Auditoría de seguridad para apps hechas con IA sobre Supabase: comprueba con dos cuentas de
-> prueba si RLS aísla de verdad a los usuarios, y genera un informe con los arreglos.
-
-**Descripción corta (EN)**
-
-> Security audit for AI-built apps on Supabase: uses two test accounts to check whether RLS
-> actually isolates users, and produces a report with fixes.
-
-**Temas**: `supabase`, `row-level-security`, `security-audit`, `lovable`, `postgres`.
-
-## 4. Borradores de anuncio
-
-Breves y sin promesas. Para publicar en un perfil propio, no para enviar por mensaje directo.
+Para un perfil propio, no para enviar por mensaje directo. Publícalos solo cuando la
+validación esté hecha, o deja la frase que dice que no lo está.
 
 **Español**
 
-> He publicado cerrojo, una herramienta abierta para revisar la seguridad de apps hechas con
-> IA sobre Supabase.
+> He publicado cerrojo, una herramienta abierta para comprobar si los usuarios de una app
+> hecha con IA sobre Supabase pueden ver datos de otros usuarios.
 >
-> Parte de una idea sencilla: que RLS esté "activado" no significa que funcione. La regla
+> La idea: que RLS esté "activado" no significa que funcione. La regla
 > `auth.uid() is not null` deja pasar a cualquier usuario registrado, y desde fuera no se nota.
-> cerrojo inicia sesión con dos cuentas de prueba y comprueba si una recibe datos de la otra.
+> cerrojo inicia sesión con dos cuentas de prueba y compara lo que recibe cada una.
 >
-> Incluye una app ficticia vulnerable para probarla en local sin tocar nada real.
+> Incluye una app ficticia vulnerable para probarla en local. Es una primera versión y todavía
+> no está validada contra un Supabase real; sus límites están escritos en el README.
 >
-> Es una primera versión: [enlace al repositorio]. Sus límites están escritos en el README.
+> [enlace]
 
 **Inglés**
 
-> I've released cerrojo, an open tool for reviewing the security of AI-built apps on Supabase.
+> I've released cerrojo, an open tool that checks whether users of an AI-built app on Supabase
+> can see each other's data.
 >
-> The idea is simple: RLS being "enabled" doesn't mean it works. A policy like
-> `auth.uid() is not null` lets any signed-up user through, and you can't tell from outside.
-> cerrojo signs in with two test accounts and checks whether one receives the other's data.
+> The idea: RLS being "enabled" doesn't mean it works. A policy like `auth.uid() is not null`
+> lets any signed-up user through, and you can't tell from outside. cerrojo signs in with two
+> test accounts and compares what each one receives.
 >
-> It ships with a deliberately vulnerable demo app so you can try it locally without touching
-> anything real.
+> It ships with a deliberately vulnerable demo app you can run locally. It's a first version,
+> not yet validated against a real Supabase project; its limits are written down in the README.
 >
-> It's a first version: [repo link]. Its limits are written down in the README.
+> [link]
 
-Lo que estos textos evitan a propósito: decir cuántas apps tienen el fallo (las cifras que
-circulan vienen de vendedores de escáneres), decir que la herramienta está probada en
-producción y anunciar el servicio de pago antes de haberlo hecho una vez.
-
-## 5. Órdenes de comprobación
+## Comprobaciones previas a cualquier publicación
 
 ```bash
 npm test
@@ -114,16 +89,7 @@ git log --format='%an <%ae>' | sort -u
 ```
 
 ```bash
-git grep -nIE "eyJ[A-Za-z0-9_-]{20,}\.eyJ|sb_secret_[A-Za-z0-9]|sk_live_[A-Za-z0-9]|sk-(proj|ant)-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|BEGIN [A-Z ]*PRIVATE KEY" $(git rev-list --all)
+git grep -nIE "eyJ[A-Za-z0-9_-]{20,}\.eyJ|sb_secret_[A-Za-z0-9]{8}|sk_live_[A-Za-z0-9]{8}|sk-(proj|ant)-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}" $(git rev-list --all)
 ```
 
-La última no debe devolver nada: las claves falsas de la demo se generan al arrancar y no
-están en el repositorio.
-
-## 6. Orden sugerido de pasos
-
-1. Validar contra un Supabase propio y corregir.
-2. Primera auditoría gratuita y con permiso; medir horas.
-3. Ajustar oferta, guía y precio con lo aprendido.
-4. Repasar la lista del apartado 2.
-5. Publicar el repositorio. La página y el anuncio, después y por separado.
+La última no debe devolver nada.

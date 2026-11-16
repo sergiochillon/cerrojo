@@ -13,6 +13,8 @@ un hallazgo es algo que has abierto, leído y entendido.
 
 - [ ] Autorización firmada ([AUTORIZACION.md](AUTORIZACION.md)) con alcance, fechas y entorno.
 - [ ] Acordado **dónde** se hace la prueba de aislamiento, por este orden de preferencia:
+  0. una réplica local hecha con el esquema del cliente y datos inventados
+     ([REPLICA-LOCAL.md](REPLICA-LOCAL.md)): no requiere acceso a su proyecto;
   1. un proyecto de pruebas (staging) con datos ficticios;
   2. una rama o copia del proyecto cargada con datos ficticios;
   3. producción, solo si no hay alternativa, por escrito, con cuentas de prueba nuevas y
@@ -24,6 +26,9 @@ un hallazgo es algo que has abierto, leído y entendido.
 - [ ] Acceso de lectura al repositorio.
 - [ ] Un contacto del titular al que avisar si aparece algo grave.
 - [ ] Una carpeta de trabajo fuera de cualquier repositorio para los resultados.
+
+Si el resultado trae **avisos de "no concluyente"**, no hay informe que entregar todavía:
+resuélvelos (clave correcta, datos de prueba, tablas que faltan) y repite.
 
 ## 1. Pasada automática (30–45 min)
 
@@ -155,11 +160,12 @@ Descarta lo que no puedas sostener. Un informe corto y cierto vale más que uno 
 
 ```bash
 node bin/cerrojo.js informe salida/web.json salida/aislamiento.json salida/repo.json \
-  --cliente "…" --auditor "…" --salida salida/informe.html
+  --manual salida/revision-manual.json --cliente "…" --auditor "…" --salida salida/informe.html
 ```
 
-- [ ] El HTML generado es la base. Añade a mano los hallazgos manuales y quita los
-      descartados; todavía no hay una orden para incorporar hallazgos manuales al informe.
+- [ ] Escribe tus hallazgos, los automáticos que descartas (con el motivo) y lo que no has
+      revisado en un archivo como [revision-manual.ejemplo.json](revision-manual.ejemplo.json)
+      y pásalo con `--manual`. Lo descartado no desaparece: queda listado con su motivo.
 - [ ] Revisa que no contenga ningún dato personal ni ningún secreto completo.
 - [ ] Deja escrito qué **no** se revisó.
 - [ ] Imprime a PDF desde el navegador para enviarlo.

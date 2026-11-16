@@ -19,11 +19,18 @@ Es la limitación principal.
   respuesta (por ejemplo, tomar un error por "tabla protegida"). **Un resultado sin hallazgos
   obtenido antes de esa validación no significa nada.**
 
-Qué falta: ejecutarla contra un proyecto gratuito propio, con tablas buenas y malas a
-propósito, y corregir lo que no coincida. El procedimiento está preparado y ensayado en local
-en [../validacion/GUION.md](../validacion/GUION.md), pero **no se ha ejecutado**: lo tiene que
-hacer una persona, a mano, en un proyecto de pruebas. Ese guion detalla también qué seguirá
-sin demostrarse después de pasarlo.
+Qué falta: ejecutarla contra un Supabase de verdad y corregir lo que no coincida. Hay dos
+procedimientos preparados, **ninguno ejecutado**:
+
+- [../validacion/LOCAL.md](../validacion/LOCAL.md): contra un Supabase local con Docker. Sin
+  nube ni cuenta; es el más corto y permite probar también la escritura.
+- [../validacion/GUION.md](../validacion/GUION.md): contra un proyecto de pruebas alojado, con
+  datos sintéticos. Comprueba además lo propio de la nube.
+
+Mientras tanto, la herramienta está hecha para no engañar: si el proyecto rechaza la clave, si
+una tabla devuelve un error o si no se detecta nada que comprobar, lo marca como **no
+concluyente** en vez de darlo por protegido. Eso reduce el riesgo de un informe limpio falso,
+pero no sustituye a la validación.
 
 ## 2. Qué clases de fallo cubre y cuáles no
 
@@ -35,7 +42,8 @@ No cubre, y un informe debe decirlo:
 - **Edge Functions y RPC**: se listan, no se ejecutan ni se analizan a fondo. La revisión de
   código por patrones solo detecta la ausencia evidente de comprobación de identidad.
 - **Escritura en proyectos reales**: no se prueba. La comprobación de escritura solo se
-  ejecuta en una base local desechable; en producción la escritura se evalúa leyendo políticas.
+  ejecuta en una base local desechable (por eso se recomienda trabajar sobre una
+  [réplica local](REPLICA-LOCAL.md)); en producción la escritura se evalúa leyendo políticas.
 - **Inserción con identidad ajena** (crear filas a nombre de otro usuario) y **borrado**: no se
   prueban dinámicamente en ningún caso.
 - **Escalada de privilegios dinámica**: que un usuario pueda cambiar su propio rol se detecta
@@ -74,9 +82,11 @@ No cubre, y un informe debe decirlo:
 - La gravedad se estima por los **nombres** de tablas y columnas (`email`, `token`…), no por su
   contenido.
 - El análisis de SQL es tolerante, no un analizador completo de PostgreSQL. Reconoce las
-  condiciones triviales (`true`, `auth.uid() is not null`, `auth.role() = 'authenticated'`);
-  una política incorrecta pero más elaborada no la detecta, y SQL generado dinámicamente
-  tampoco.
+  condiciones que dejan pasar a cualquiera o a cualquier usuario registrado, también escritas
+  con conversiones de tipo, subconsultas triviales o combinadas con OR y AND. Una política
+  incorrecta de otra clase (compara con la columna equivocada, consulta una tabla que el
+  usuario puede modificar) **no la detecta**: para eso están la prueba con dos cuentas y la
+  revisión manual. El SQL generado dinámicamente tampoco se analiza.
 - Los avisos sobre código (Edge Function sin comprobación de identidad, permisos decididos en
   el navegador, HTML sin sanear) son heurísticos: hay que abrir el archivo antes de afirmarlos.
 
@@ -123,19 +133,19 @@ fuera:
 - La nota de protección de datos del informe es informativa, no asesoramiento jurídico.
 - No se ha medido el rendimiento con aplicaciones grandes (muchos archivos JavaScript o
   cientos de tablas).
-- La única revisión independiente ha sido una pasada automática de Antigravity sobre el guion
-  de validación y las salvaguardas de red. No ha habido revisión humana ni auditoría del resto
-  del código.
+- Las únicas revisiones independientes han sido automáticas, con Antigravity: una del guion
+  de validación y dos del código (ver [BITACORA.md](BITACORA.md)). Encontraron fallos reales,
+  ya corregidos, lo que indica que probablemente quedan otros. No ha habido revisión humana.
 
 ## Antes de ofrecerlo a un cliente
 
-1. Seguir [../validacion/GUION.md](../validacion/GUION.md): crear un proyecto gratuito de
-   Supabase **propio** con datos sintéticos y ejecutar el validador de solo lectura.
+1. Seguir [../validacion/LOCAL.md](../validacion/LOCAL.md) (Supabase local con Docker) y,
+   si se quiere comprobar también la nube, [../validacion/GUION.md](../validacion/GUION.md).
 2. Corregir en `src/supabase.js` cada diferencia con la emulación, con una prueba que la
    reproduzca, y repetir hasta que todo coincida.
 3. Repetir con las claves nuevas (`sb_publishable_`) y con las antiguas (JWT `anon`).
 4. Probar un caso con modelo de organización o equipo y decidir cómo tratarlo.
-5. Hacer una auditoría completa, gratis y con permiso, de una app real de alguien conocido,
-   siguiendo [GUIA-REVISION-MANUAL.md](GUIA-REVISION-MANUAL.md), y medir cuántas horas lleva.
+5. Hacer el trabajo completo una vez, gratis y con permiso, sobre una réplica local de una app
+   real de alguien conocido ([REPLICA-LOCAL.md](REPLICA-LOCAL.md)), y medir cuántas horas lleva.
 6. Tener firmada la autorización ([AUTORIZACION.md](AUTORIZACION.md)) y unas condiciones de
    servicio con limitación de responsabilidad revisadas por alguien que sepa de ello.

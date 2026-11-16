@@ -2,213 +2,145 @@
 
 Todo lo de este documento es una **hipótesis de trabajo**. No hay ningún cliente, ninguna venta
 ni ninguna conversación con compradores detrás. Los precios observados proceden de anuncios y
-encargos de terceros citados en [INVESTIGACION.md](INVESTIGACION.md).
+encargos de terceros citados en [INVESTIGACION.md](INVESTIGACION.md). El porqué de esta versión
+está en [REVISION-ESTRATEGICA.md](REVISION-ESTRATEGICA.md).
 
-**No lo ofrezcas todavía.** Antes hay que completar la lista "Antes de ofrecerlo a un cliente"
-de [LIMITACIONES.md](LIMITACIONES.md): la herramienta no se ha ejecutado contra un Supabase
-real.
+**No lo ofrezcas todavía.** Antes hay que validar la herramienta contra un Supabase real
+([../validacion/LOCAL.md](../validacion/LOCAL.md)) y haber hecho el trabajo una vez, gratis y
+con permiso, para tener un informe de muestra de verdad y saber cuántas horas lleva.
 
-## 1. A quién va dirigido
+## 1. Qué se vende
 
-Personas que han construido una aplicación con herramientas de IA (Lovable, Bolt, Cursor, v0…)
-sobre Supabase, que no son especialistas en seguridad y que están en uno de estos momentos:
+**Comprobar si los usuarios de tu app pueden ver o cambiar datos de otros usuarios, y
+arreglarlo.**
 
-- van a abrir la app a usuarios reales o a empezar a cobrar;
-- ya tienen usuarios y les inquieta lo que han leído sobre fugas de datos en apps generadas;
-- un cliente, un inversor o un socio les ha pedido alguna garantía;
-- una agencia o un desarrollador freelance que entrega este tipo de apps a terceros y quiere
-  una revisión independiente antes de la entrega.
+No es una "auditoría de seguridad". Es un trabajo de desarrollo acotado, con un resultado que
+el cliente puede comprobar: la misma prueba, con dos cuentas, antes y después.
 
-No es para equipos con un responsable de seguridad, ni para apps que no usan Supabase.
+Para quién: personas que han construido una app con Lovable, Bolt, Cursor o similares sobre
+Supabase, no son especialistas, y van a abrirla a usuarios reales o ya la tienen abierta.
+También agencias y freelances que entregan este tipo de apps a terceros.
 
-## 2. Qué se entrega
+No es para: equipos con responsable de seguridad, ni apps que no usan Supabase desde el
+navegador.
 
-**Revisión de seguridad previa al lanzamiento**, a precio cerrado:
+## 2. Cómo se trabaja
 
-1. Comprobación externa de la app desplegada: qué puede leer un visitante sin cuenta.
-2. Prueba de aislamiento con dos cuentas de prueba: si un usuario registrado ve datos de otro.
-   Se hace en un entorno de pruebas o con datos ficticios.
-3. Revisión de las migraciones SQL y del código: políticas RLS, vistas y funciones, secretos,
-   Edge Functions.
-4. Revisión manual de lo que las herramientas no cubren, siguiendo
-   [GUIA-REVISION-MANUAL.md](GUIA-REVISION-MANUAL.md).
-5. Un informe en español o inglés: cada hallazgo con dónde está, qué se observó, por qué
-   importa y el SQL o el cambio concreto para arreglarlo. Ejemplo real del formato (sobre una
-   app ficticia): [ejemplo-informe.html](ejemplo-informe.html).
-6. Una llamada de 30 minutos para repasarlo.
+Sobre una **réplica local** de su proyecto ([REPLICA-LOCAL.md](REPLICA-LOCAL.md)):
 
-Lo que **no** incluye, y hay que decir antes de cobrar: no es una prueba de penetración
-completa, no cubre lógica de negocio ni pagos, no es una certificación y no garantiza que la
-app sea segura. Es una revisión acotada de las clases de fallo más frecuentes en este tipo de
-aplicaciones.
+- el cliente entrega su código y su esquema, **sin datos**;
+- se reconstruye en un Supabase local con usuarios y filas inventados;
+- todas las pruebas se hacen ahí. **No hace falta acceso a su base de datos ni a los datos de
+  sus usuarios, y no se toca producción.**
 
-## 3. Hipótesis de precio
+Si el cliente prefiere que se compruebe su proyecto desplegado, se puede, y entonces hay que
+decirle antes y por escrito que la prueba lee filas de su base de datos (hasta 1.000 por
+cuenta y tabla), que debe hacerse en un entorno de pruebas o con datos ficticios, y que la
+escritura no se prueba.
+
+## 3. Qué se entrega
+
+1. Una tabla por cada tabla de la app: qué lee alguien sin cuenta, qué lee cada una de las dos
+   cuentas de prueba y si una puede modificar lo de la otra.
+2. Cada problema con dónde está, qué se observó, por qué importa y el SQL exacto para
+   arreglarlo. Formato: [ejemplo-informe.html](ejemplo-informe.html) (sobre una app ficticia).
+3. La lista de lo que **no** se revisó.
+4. En el nivel con arreglos: la migración SQL de corrección, aplicada y vuelta a probar en la
+   réplica, con el antes y el después.
+
+Lo que no incluye, y se dice antes de cobrar: no es una prueba de penetración, no cubre pagos
+ni lógica de negocio, no es una certificación y no garantiza que la app sea segura. La
+corrección se entrega probada en la réplica; **aplicarla en producción lo decide y lo hace el
+cliente**.
+
+## 4. Hipótesis de precio
 
 ### Referencias observadas (de terceros, sin verificar ventas)
 
 | Referencia | Precio |
 |---|---|
 | Revisión productizada de app hecha con IA | 99 $ |
-| Encargos publicados para auditar app Lovable + Supabase | 150–400 $, 500 $ y 1.000 $ |
+| Encargos publicados para auditar o preparar para producción una app Lovable + Supabase | 150–400 $, 500 $ y 1.000 $ |
 | "Pen test" de app generada en 48 h, con ampliación | 497 $ → 1.250 $ |
-| Diagnóstico de software a medida en España (otro sector) | 149 € + IVA |
-| Auditorías de accesibilidad de entrada en España (otro servicio) | 290–490 € |
+| Encargos de revisión y puesta en producción (búsqueda de Antigravity, sin enlaces verificados por mí) | 300–1.500 $ |
 
-### Propuesta de partida
+### Propuesta
 
 | Nivel | Qué incluye | Precio hipotético (sin IVA) |
 |---|---|---|
-| **Revisión** | Puntos 1 a 6 de arriba. Hasta 15 tablas y 10 Edge Functions. Entrega en 3 días laborables. | **290 €** |
-| **Revisión + arreglos** | Lo anterior, más una migración SQL con las correcciones, lista para revisar y aplicar, y una segunda pasada para comprobar que los hallazgos desaparecen. | **590 €** |
-| **Repaso tras cambios** | Repetir las comprobaciones después de añadir funcionalidades. Solo para quien ya hizo una revisión. | **90 €** |
+| **Comprobación** | Hasta 5 tablas. La tabla de acceso real (sin cuenta, cuenta A, cuenta B) y el SQL para corregir lo crítico. | **49 €** |
+| **Comprobación completa** | Hasta 15 tablas y 10 Edge Functions. Lo anterior más revisión manual de políticas, vistas y funciones, e informe completo. | **190 €** |
+| **Comprobación y arreglo** | Lo anterior más la migración de corrección, aplicada y verificada en la réplica, con el antes y el después. | **390 €** |
 
-Razonamiento, con sus huecos:
+Por qué estos números y no los anteriores (290 / 590 / 90 €):
 
-- 290 € queda dentro del rango de los encargos observados (150–500 $) y por debajo de los que
-  piden revisión manual a fondo (1.000 $). Es un precio que alguien que ha construido la app
-  sin programar puede decidir solo, sin pedir permiso a nadie.
-- La estimación de esfuerzo es de **5 a 7 horas** para el nivel "Revisión" (el desglose está en
-  [GUIA-REVISION-MANUAL.md](GUIA-REVISION-MANUAL.md)), es decir, entre 40 y 60 € por hora.
-  **No está medida**: es una suposición hasta hacer la primera auditoría real. Si resultan ser
-  12 horas, el precio no se sostiene.
-- "Revisión + arreglos" responde a lo que piden los encargos mejor pagados: no un PDF, sino el
-  problema resuelto. También es donde más responsabilidad se asume: aplicar una migración
-  equivocada puede romper la app. Por eso se entrega para revisar, no se aplica en producción.
-- El "repaso" existe porque el problema reaparece con cada funcionalidad nueva. Una cuota
-  mensual sería el paso siguiente, pero no tiene sentido plantearla sin clientes.
+- **49 € es un precio de entrada, no un negocio.** Sirve para que alguien pruebe a un perfil
+  sin reseñas. Con 3–5 horas de trabajo real, sale a pérdida. Es el coste de la primera reseña.
+- **190 € y 390 €** quedan dentro del rango de los encargos observados (150–500 $) y por
+  debajo de los que piden revisión a fondo (1.000 $).
+- El valor está en el tercer nivel: quien no programa no quiere un informe, quiere el problema
+  resuelto.
+- Con las horas estimadas en [REPLICA-LOCAL.md](REPLICA-LOCAL.md) (4–9 h), 390 € son 45–95 €
+  por hora. **Las horas no están medidas.**
 
-### Cómo comprobar si el precio es correcto
+### Cómo saber si el precio está bien
 
-Decidir antes de empezar qué resultado cambia qué:
+Reglas fijadas antes de empezar (más detalle en REVISION-ESTRATEGICA.md):
 
-- Presentar el mismo precio (290 €) a las cinco primeras personas interesadas.
-- Si tres o más aceptan sin negociar: el precio es bajo; probar 390 € con las cinco siguientes.
-- Si todas preguntan pero ninguna paga: el problema no es el precio sino la confianza o el
-  alcance. Probar con una primera revisión gratuita a cambio de permiso para usar el informe
-  anonimizado como muestra.
-- Si nadie pregunta siquiera: el problema es el canal o que no hay demanda en español. Volver a
-  [INVESTIGACION.md](INVESTIGACION.md) antes de bajar el precio.
+- Si los tres primeros compradores del nivel de 49 € quedan satisfechos, subirlo a 79 €.
+- Si nadie compra a 49 €, el problema no es el precio: ofrecer la primera gratis a cambio de
+  reseña y permiso para usar el informe anonimizado.
+- Si la primera entrega del nivel completo pasa de 12 horas, reducir alcance o subir precio.
 
-### Costes y condiciones que hay que resolver
+### Costes y condiciones sin resolver
 
-- **Herramientas**: 0 €. No se usan APIs de pago.
-- **Canales**: publicar en Upwork consume "connects", que pueden costar dinero. No verificado.
-- **Facturar**: cobrar exige poder emitir factura con arreglo a la normativa fiscal que te
-  aplique. No se ha analizado tu situación; consúltalo antes de aceptar un pago.
-- **Responsabilidad**: un servicio de seguridad puede generar reclamaciones si después hay un
-  incidente. Hacen falta unas condiciones con alcance y limitación de responsabilidad, y
-  conviene valorar un seguro de responsabilidad civil profesional. No es asesoramiento
-  jurídico.
+- **Herramientas:** 0 €.
+- **Canales:** un gig en Fiverr es gratis de publicar; la plataforma se queda una comisión de
+  cada venta. Proponer en Upwork consume "connects", que pueden costar dinero. **No se ha
+  verificado ni gastado nada.**
+- **Facturar:** cobrar exige poder emitir factura según tu situación fiscal. No analizado.
+- **Responsabilidad:** aunque no se llame auditoría, un cliente puede reclamar si después hay
+  un incidente. Hacen falta condiciones con alcance y limitación de responsabilidad. No es
+  asesoramiento jurídico.
 
-## 4. Textos de presentación
+## 5. Textos
 
-Borradores. Ninguno afirma resultados, clientes ni cifras que no existen. Sustituye lo que va
-entre corchetes.
+Los textos para Fiverr y Upwork, en inglés y español, están en
+[MARKETPLACES.md](MARKETPLACES.md).
 
 ### Una línea
 
-Compruebo si los usuarios de tu app pueden ver los datos de otros usuarios, antes de que lo
-descubra alguien más.
+Compruebo con dos cuentas si tus usuarios pueden ver datos de otros usuarios, y lo arreglo.
 
 ### Párrafo
 
-Las apps hechas con Lovable, Bolt o Cursor sobre Supabase suelen tener la base de datos
-accesible desde el navegador, protegida solo por reglas de acceso (RLS). El fallo habitual no
-es que esas reglas falten, sino que estén activadas y mal escritas: el panel dice "protegido"
-y cualquier usuario registrado puede leer los datos de los demás. Hago una revisión a precio
-cerrado: inicio sesión con dos cuentas de prueba y compruebo qué ve cada una, reviso las
-reglas y el código, y te entrego un informe con cada problema y el cambio exacto para
-arreglarlo. Aquí tienes un informe de ejemplo sobre una app ficticia: [enlace].
+En las apps hechas con Lovable, Bolt o Cursor sobre Supabase, lo único que separa a un usuario
+de los datos de otro son las reglas de acceso de cada tabla (RLS). El fallo habitual no es que
+falten: es que están activadas con una condición que deja pasar a cualquiera que haya iniciado
+sesión. El panel dice "protegido" y un usuario registrado lee los datos de todos. Yo lo
+compruebo de la única forma fiable: con dos cuentas, mirando qué recibe cada una. Trabajo
+sobre una copia local de tu proyecto con datos inventados, así que no necesito acceso a tu
+base de datos. Te entrego qué falla, por qué y el SQL que lo arregla.
 
-### Respuesta a un encargo publicado
+## 6. Preguntas previsibles y respuestas honestas
 
-Hola, [nombre].
+**"Lovable ya tiene un escáner."** Sí, y conviene pasarlo. Según lo publicado, comprueba que
+haya políticas; lo que yo hago es iniciar sesión con dos cuentas y ver qué recibe cada una. Si
+tu app pasa la prueba, te lo digo y te habrá costado poco saberlo.
 
-He leído que necesitas [revisar la seguridad de tu app hecha con Lovable y Supabase antes de
-lanzarla]. Es justo lo que hago.
+**"¿Me garantizas que queda segura?"** No. Te garantizo que hago las comprobaciones descritas,
+te enseño el resultado y te digo qué no he revisado.
 
-Lo que haría, en este orden:
+**"¿Vas a ver los datos de mis usuarios?"** No, si trabajamos sobre la réplica: solo necesito
+tu código y tu esquema, sin datos. Si prefieres que pruebe tu proyecto desplegado, la prueba
+lee filas de tu base, y entonces lo hacemos en un entorno de pruebas y lo dejamos por escrito.
 
-1. Mirar qué puede leer de tu app alguien sin cuenta.
-2. Crear dos cuentas de prueba y comprobar si una ve o puede tocar datos de la otra. Esto lo
-   hago en un entorno de pruebas o con datos ficticios, no con los datos de tus usuarios.
-3. Revisar las reglas de acceso de cada tabla, las funciones y las claves.
-4. Entregarte un informe con cada problema, su gravedad y el SQL para corregirlo, y repasarlo
-   contigo en una llamada.
+**"¿Aplicas tú los cambios en mi base de datos?"** No. Te entrego la migración probada en la
+réplica y te acompaño al aplicarla, pero la decisión y la ejecución en producción son tuyas.
 
-Te adjunto un informe de ejemplo (sobre una app inventada) para que veas el formato: [enlace].
+**"¿Cuánta experiencia tienes?"** La verdad. Si es de los primeros trabajos, se dice, y por eso
+el precio de entrada es el que es.
 
-Lo que no hago: no es una prueba de penetración completa ni cubre la lógica de pagos. Si
-necesitas eso, te lo digo antes de empezar.
-
-Precio cerrado: [290 €]. Entrega en [3 días laborables] desde que tenga acceso.
-
-Para empezar necesito el acceso al repositorio, dos cuentas de prueba y tu autorización por
-escrito (te paso un modelo de una página).
-
-[Tu nombre]
-
-### Versión en inglés de la respuesta
-
-Hi [name],
-
-You need [a security review of your Lovable + Supabase app before launch]. That is exactly
-what I do.
-
-What I would do, in order:
-
-1. Check what someone without an account can read from your app.
-2. Create two test accounts and check whether one can see or change the other's data. I do
-   this in a staging environment or with dummy data, not with your users' data.
-3. Review the access rules on every table, the functions and the keys.
-4. Deliver a report with each issue, its severity and the SQL to fix it, and walk you through
-   it on a call.
-
-Here is a sample report (on a made-up app) so you can see the format: [link].
-
-What I don't do: this is not a full penetration test and it does not cover payment logic. If
-you need that, I will tell you before starting.
-
-Fixed price: [€290]. Delivered within [3 working days] of getting access.
-
-To start I need access to the repository, two test accounts and your written authorization (I
-will send a one-page template).
-
-[Your name]
-
-## 5. Preguntas previsibles y respuestas honestas
-
-**"Lovable ya tiene un escáner de seguridad."** Sí. Según lo publicado, comprueba que exista
-una política, y después añadieron una revisión adicional. Lo que yo hago distinto es iniciar
-sesión con dos cuentas y mirar qué recibe cada una. Si tu app pasa esa prueba, te lo diré y te
-habrás gastado poco en saberlo.
-
-**"Hay escáneres gratis."** Los hay, y conviene usarlos. Miran la app desde fuera, sin sesión.
-El fallo más frecuente solo se ve con sesión iniciada.
-
-**"¿Me garantizas que la app queda segura?"** No. Te garantizo que he hecho las comprobaciones
-descritas y que te cuento qué encontré y qué no revisé.
-
-**"¿Vas a ver los datos de mis usuarios?"** Para comprobar si una tabla se filtra hay que
-descargar filas. Por eso la prueba se hace en un entorno de pruebas o con datos ficticios. Si
-solo tienes producción, lo hablamos antes y lo dejamos por escrito.
-
-**"¿Cuánta experiencia tienes?"** Responde con la verdad. Si es tu primera auditoría, dilo y
-ofrece la primera a precio reducido o gratis a cambio de comentarios.
-
-## 6. Dónde encontrar a los primeros interesados (sin spam)
-
-Ninguna de estas vías se ha probado.
-
-- **Encargos publicados** en Upwork, Contra o Malt que piden exactamente esto. Es responder a
-  una petición, no contacto en frío.
-- **Personas que ya conoces** que hayan construido algo con estas herramientas. La primera
-  auditoría, gratis y con permiso, da el informe de muestra y la medida real de las horas.
-- **Comunidades** de creadores con estas herramientas, respetando sus normas: responder
-  preguntas sobre seguridad con información útil, sin promoción.
-- **Agencias y freelances** que entregan apps hechas con IA: revisión independiente antes de
-  entregar al cliente final.
-
-Lo que no hay que hacer: mensajes en frío masivos, ni escanear apps ajenas sin permiso para
-luego escribir al dueño con los fallos. Lo segundo, además de contraproducente, puede ser
-delito.
+**"La herramienta es gratis, ¿por qué te pago?"** Porque la herramienta encuentra una parte, y
+el trabajo es montar la réplica, sembrar los datos, leer las políticas y las funciones una a
+una, escribir el arreglo y comprobar que funciona sin romper la app.

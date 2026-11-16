@@ -251,7 +251,7 @@ export function motivosParaNoEmpezar(env) {
 
 const corto = (v) => JSON.stringify(v).replace(/"/g, '');
 
-function imprimir(resultado, escribir) {
+export function imprimir(resultado, escribir) {
   const fallos = resultado.comprobaciones.filter((c) => !c.ok && !c.informativa);
   escribir(`\nProyecto: ${resultado.objetivo} · clave: ${resultado.claveTipo}\n`);
   for (const c of resultado.comprobaciones) {

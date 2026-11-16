@@ -1,20 +1,15 @@
 <!doctype html>
-<!--
-  BORRADOR DE PÁGINA DE PRESENTACIÓN — NO PUBLICADA.
-  Antes de publicar: completa docs/LANZAMIENTO.md, sustituye [CONTACTO] y quita la franja
-  de borrador. No añadas testimonios, cifras ni clientes que no existan.
--->
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>cerrojo — revisión de seguridad para apps hechas con IA</title>
+<meta name="description" content="cerrojo comprueba con dos cuentas de prueba si los usuarios de una app sobre Supabase pueden ver o cambiar datos de otros usuarios.">
+<title>cerrojo — ¿ven tus usuarios los datos de otros?</title>
 <style>
-  :root { --tinta:#1b1f24; --suave:#5b6470; --linea:#d9dee4; --fondo:#f6f7f9; --papel:#fff; --acento:#b3261e; --bien:#1f7a4d; }
+  :root { --tinta:#1b1f24; --suave:#5b6470; --linea:#d9dee4; --fondo:#f6f7f9; --papel:#fff; --acento:#b3261e; --bien:#1f7a4d; --aviso:#8a6d00; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--fondo); color:var(--tinta); font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  .borrador { background:#12161b; color:#fff; text-align:center; font-size:14px; padding:8px 16px; }
   main { max-width:760px; margin:0 auto; padding:56px 20px 72px; }
   h1 { font-size:clamp(30px, 6vw, 44px); line-height:1.12; letter-spacing:-.02em; margin:0 0 18px; text-wrap:balance; }
   h2 { font-size:22px; margin:52px 0 12px; letter-spacing:-.01em; }
@@ -26,15 +21,17 @@
   pre .mal { color:#ff9d8f; } pre .gris { color:#8b96a3; }
   .boton { display:inline-block; background:var(--tinta); color:#fff; text-decoration:none; padding:12px 20px; border-radius:8px; font-weight:600; margin:6px 10px 6px 0; }
   .boton.sec { background:transparent; color:var(--tinta); border:1.5px solid var(--tinta); }
-  .boton:focus-visible { outline:3px solid #6aa3ff; outline-offset:2px; }
+  .boton:focus-visible, a:focus-visible { outline:3px solid #6aa3ff; outline-offset:2px; }
   ol.pasos { padding:0; margin:0; list-style:none; counter-reset:paso; }
   ol.pasos li { counter-increment:paso; position:relative; padding:0 0 18px 46px; }
   ol.pasos li::before { content:counter(paso); position:absolute; left:0; top:1px; width:30px; height:30px; border-radius:50%; background:var(--tinta); color:#fff; font-weight:700; font-size:15px; display:grid; place-items:center; }
   .caja { background:var(--papel); border:1px solid var(--linea); border-radius:8px; padding:18px 20px; margin:0 0 16px; }
   .caja.no { border-left:4px solid var(--acento); }
+  .caja.estado { border-left:4px solid var(--aviso); }
   ul { margin:0 0 16px; padding-left:22px; } li { margin-bottom:6px; }
+  .caja ul:last-child, .caja p:last-child { margin-bottom:0; }
   table { width:100%; border-collapse:collapse; background:var(--papel); border:1px solid var(--linea); border-radius:8px; }
-  th, td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--linea); vertical-align:top; }
+  td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--linea); vertical-align:top; }
   tr:last-child td { border-bottom:0; }
   td.precio { font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
   .nota { color:var(--suave); font-size:15px; }
@@ -43,13 +40,12 @@
 </style>
 </head>
 <body>
-<div class="borrador">Borrador sin publicar · pendiente de revisión</div>
 <main>
   <h1>¿Pueden tus usuarios ver los datos de otros usuarios?</h1>
-  <p class="entrada">Revisión de seguridad a precio cerrado para aplicaciones hechas con Lovable, Bolt o Cursor sobre Supabase. Inicio sesión con dos cuentas de prueba y compruebo qué recibe cada una.</p>
+  <p class="entrada"><code>cerrojo</code> lo comprueba en apps hechas con Lovable, Bolt o Cursor sobre Supabase, de la única forma fiable: iniciando sesión con dos cuentas de prueba y mirando qué recibe cada una.</p>
   <p>
     <a class="boton" href="ejemplo-informe.html">Ver un informe de ejemplo</a>
-    <a class="boton sec" href="#precio">Qué incluye y cuánto cuesta</a>
+    <a class="boton sec" href="https://github.com/sergiochillon/cerrojo">Código en GitHub</a>
   </p>
 
   <h2>El fallo que los paneles no enseñan</h2>
@@ -60,42 +56,47 @@ alter table clients enable row level security;
 <span class="gris">-- …con una regla que deja pasar a cualquiera que haya iniciado sesión</span>
 create policy "clientes" on clients
   for all using (<span class="mal">auth.uid() is not null</span>);</pre>
-  <p>Desde fuera, sin cuenta, no se ve nada. Pero cualquiera que se registre lee y modifica los clientes de todos los demás. Solo se descubre iniciando sesión con dos cuentas distintas y comparando.</p>
+  <p>Desde fuera, sin cuenta, no se ve nada. Pero cualquiera que se registre lee y modifica los clientes de todos los demás. Solo se descubre comparando lo que reciben dos cuentas distintas.</p>
 
-  <h2>Cómo es la revisión</h2>
+  <h2>Qué hace la herramienta</h2>
   <ol class="pasos">
-    <li><b>Desde fuera.</b> Qué puede leer de tu app alguien sin cuenta: tablas, archivos y claves publicadas en el código.</li>
-    <li><b>Entre usuarios.</b> Dos cuentas de prueba, y la comprobación de si una recibe datos de la otra. Se hace en un entorno de pruebas o con datos ficticios.</li>
-    <li><b>Reglas y código.</b> Las reglas de acceso de cada tabla, las vistas, las funciones y las Edge Functions, leídas una a una.</li>
-    <li><b>Informe.</b> Cada problema con dónde está, qué se observó, por qué importa y el SQL exacto para arreglarlo. Y una llamada para repasarlo.</li>
+    <li><b>Desde fuera.</b> Qué puede leer de la app alguien sin cuenta: tablas, archivos y claves publicadas en el código.</li>
+    <li><b>Entre usuarios.</b> Dos cuentas de prueba, y la comprobación de si una recibe filas de la otra.</li>
+    <li><b>Reglas y código.</b> Revisa las migraciones SQL: tablas sin RLS, reglas que solo exigen sesión, vistas y funciones que se saltan las reglas, columnas de rol editables.</li>
+    <li><b>Informe.</b> Cada problema con dónde está, qué se observó, por qué importa y el SQL para arreglarlo. Y, bien visible, lo que no se pudo comprobar.</li>
   </ol>
+  <p>Es de código abierto (licencia MIT), no tiene dependencias en ejecución e incluye una app ficticia vulnerable para probarla en tu máquina sin tocar nada real.</p>
+
+  <h2>Estado del proyecto</h2>
+  <div class="caja estado">
+    <ul>
+      <li>Es una primera versión. Tiene una batería de pruebas automáticas y se ha revisado en busca de fallos propios, pero <b>todavía no se ha validado contra un proyecto Supabase real</b>: hasta ahora solo ha hablado con una emulación local de su API.</li>
+      <li>El informe de ejemplo procede de la app ficticia incluida, no de un cliente.</li>
+      <li>Los límites conocidos están escritos en el <a href="https://github.com/sergiochillon/cerrojo/blob/main/docs/LIMITACIONES.md">documento de limitaciones</a>.</li>
+    </ul>
+  </div>
 
   <h2>Lo que no es</h2>
   <div class="caja no">
     <ul>
-      <li>No es una prueba de penetración completa ni una certificación.</li>
+      <li>No es una prueba de penetración, una auditoría de seguridad ni una certificación.</li>
       <li>No cubre la lógica de negocio ni los pagos.</li>
-      <li>No garantiza que la aplicación sea segura. Dice qué se comprobó, qué se encontró y qué quedó sin revisar.</li>
+      <li>No garantiza que una aplicación sea segura. Dice qué se comprobó, qué se encontró y qué quedó sin revisar.</li>
       <li>Solo sirve para aplicaciones que usan Supabase desde el navegador.</li>
     </ul>
   </div>
 
-  <h2 id="precio">Qué incluye y cuánto cuesta</h2>
+  <h2 id="servicio">Comprobación hecha por una persona (en preparación)</h2>
+  <p>Además de la herramienta, estoy preparando un servicio a precio cerrado: hacer la comprobación por ti y, si quieres, dejar escrito y probado el arreglo. Se trabaja sobre una <b>copia local</b> de tu proyecto, reconstruida con tu esquema y datos inventados, así que no hace falta acceso a tu base de datos ni a los datos de tus usuarios.</p>
   <table>
-    <tr><td><b>Revisión</b><br><span class="nota">Los cuatro pasos de arriba. Hasta 15 tablas y 10 Edge Functions. Entrega en 3 días laborables.</span></td><td class="precio">290 €</td></tr>
-    <tr><td><b>Revisión + arreglos</b><br><span class="nota">Además, una migración SQL con las correcciones lista para que la revises y la apliques, y una segunda pasada para comprobar que los problemas han desaparecido.</span></td><td class="precio">590 €</td></tr>
-    <tr><td><b>Repaso tras cambios</b><br><span class="nota">Repetir las comprobaciones después de añadir funcionalidades. Para quien ya ha hecho una revisión.</span></td><td class="precio">90 €</td></tr>
+    <tr><td><b>Comprobación</b><br><span class="nota">Hasta 5 tablas. Qué lee alguien sin cuenta, qué lee cada una de dos cuentas, y el SQL para corregir lo crítico.</span></td><td class="precio">49 €</td></tr>
+    <tr><td><b>Comprobación completa</b><br><span class="nota">Hasta 15 tablas y 10 Edge Functions, con revisión manual de reglas, vistas y funciones.</span></td><td class="precio">190 €</td></tr>
+    <tr><td><b>Comprobación y arreglo</b><br><span class="nota">Lo anterior más la migración de corrección, aplicada y vuelta a probar en la copia local. Aplicarla en producción lo decides y lo haces tú.</span></td><td class="precio">390 €</td></tr>
   </table>
-  <p class="nota" style="margin-top:10px">Precios sin IVA. Para empezar hacen falta acceso al repositorio, dos cuentas de prueba y una autorización por escrito de una página.</p>
-
-  <h2>Tus datos</h2>
-  <p>Para saber si una tabla se filtra hay que pedirle filas: la comprobación entre usuarios descarga hasta 1.000 filas por cuenta y tabla y las compara en memoria. No se guardan y en el informe solo aparecen recuentos y nombres de columna, pero por eso mismo la prueba se hace en un entorno de pruebas o con datos ficticios, no con los datos de tus usuarios. No se escribe nada en tu base de datos.</p>
-
-  <h2>La herramienta es abierta</h2>
-  <p>Las comprobaciones automáticas se hacen con <code>cerrojo</code>, de código abierto. Puedes ejecutarla tú sobre tu propia aplicación, con una demo local incluida para ver cómo funciona sin tocar nada real.</p>
+  <p class="nota" style="margin-top:10px">Precios orientativos, sin IVA. El servicio es nuevo y aún no se ha prestado a ningún cliente: las primeras comprobaciones son a precio de entrada precisamente por eso.</p>
 
   <h2>Contacto</h2>
-  <p>[CONTACTO]</p>
+  <p>Si te interesa una de las primeras comprobaciones, <a href="https://github.com/sergiochillon/cerrojo/issues/new?template=comprobacion.md">abre una solicitud en GitHub</a>. Es pública: no pongas la dirección de tu app, claves ni datos; basta con decir qué herramienta usaste y cuántas tablas tiene.</p>
 
   <footer>cerrojo · herramienta bajo licencia MIT · esta página no usa cookies ni analítica</footer>
 </main>

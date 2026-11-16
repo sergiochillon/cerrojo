@@ -69,7 +69,7 @@ test('política: USING correcto con WITH CHECK (true) se detecta', () => {
 });
 
 test('política: formas equivalentes de "true" y de "solo sesión"', () => {
-  for (const e of ['true', '(true)', '( (TRUE) )', '1 = 1', '(select true)', '(true)::boolean', 'true::bool', 'auth.uid() = user_id OR true', 'NOT false']) {
+  for (const e of ['true', '(true)', '( (TRUE) )', '1 = 1', '(select true)', '(true)::boolean', 'true::bool', 'auth.uid() = user_id OR true', 'NOT false', 'user_id=auth.uid()OR(true)', '(user_id = auth.uid())OR(1=1)', 'true or false']) {
     assert.ok(esSiempreCierta(e), `debería ser siempre cierta: ${e}`);
   }
   for (const e of [
@@ -81,10 +81,29 @@ test('política: formas equivalentes de "true" y de "solo sesión"', () => {
     "auth.role() = 'authenticated'",
     'user_id = auth.uid() or auth.uid() is not null',
     'true and auth.uid() is not null',
+    'not (auth.uid() is null)',
+    "auth.role() in ('authenticated')",
+    'auth.uid() IS NOT NULL AND(true)',
+    '(auth.uid() is not null) or (user_id = auth.uid())',
   ]) {
     assert.ok(soloExigeSesion(e), `debería contar como "solo sesión": ${e}`);
   }
-  for (const e of ['auth.uid() = user_id', '(select auth.uid()) = user_id', 'auth.uid() is not null and auth.uid() = user_id', "status similar to 'a%' and assigned_to = auth.uid()", 'false', 'user_id = auth.uid() or false']) {
+  for (const e of [
+    'auth.uid() = user_id',
+    '(select auth.uid()) = user_id',
+    'auth.uid() is not null and auth.uid() = user_id',
+    "status similar to 'a%' and assigned_to = auth.uid()",
+    'false',
+    'user_id = auth.uid() or false',
+    // Lo que se parece a una condición abierta pero no lo es.
+    'user_id = auth.uid() or is_public = true',
+    'true = false',
+    "status = 'or true'",
+    "name = 'a' or name = 'true'",
+    'auth.uid() = user_id and deleted_at is null',
+    "(select auth.uid()) = user_id or (select auth.role()) = 'service_role'",
+    'false and true',
+  ]) {
     assert.ok(!esSiempreCierta(e) && !soloExigeSesion(e), `no debería marcarse: ${e}`);
   }
   assert.equal(clasificarCondicion(null), 'cierta', 'sin condición equivale a true');

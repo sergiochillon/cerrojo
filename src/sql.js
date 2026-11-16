@@ -129,7 +129,10 @@ function entreParentesis(texto, desde) {
   return null;
 }
 
-/** Parte por un separador (coma, o una palabra como "or"/"and") solo en el nivel exterior. */
+/**
+ * Parte por un separador (coma, o una palabra como "or"/"and") solo en el nivel exterior.
+ * La palabra cuenta como operador si va entre espacios o pegada a un paréntesis: "a OR(b)".
+ */
 function partirExterior(texto, separador) {
   const partes = [];
   const esComa = separador === ',';
@@ -144,18 +147,28 @@ function partirExterior(texto, separador) {
       if (c === enCadena) enCadena = null;
       continue;
     }
-    if (c === "'" || c === '"') enCadena = c;
-    else if (c === '(') nivel++;
-    else if (c === ')') nivel--;
-    else if (nivel === 0) {
-      if (esComa && c === ',') {
+    if (c === "'" || c === '"') {
+      enCadena = c;
+      continue;
+    }
+    if (c === '(') {
+      nivel++;
+      continue;
+    }
+    if (c === ')') {
+      nivel--;
+      continue;
+    }
+    if (nivel !== 0) continue;
+    if (esComa) {
+      if (c === ',') {
         partes.push(texto.slice(inicio, i).trim());
         inicio = i + 1;
-      } else if (palabra && /\s/.test(c) && bajo.startsWith(palabra, i + 1) && /\s/.test(texto[i + 1 + palabra.length] ?? '')) {
-        partes.push(texto.slice(inicio, i).trim());
-        inicio = i + 1 + palabra.length;
-        i = inicio - 1;
       }
+    } else if (i > 0 && bajo.startsWith(palabra, i) && /[\s)]/.test(texto[i - 1]) && /[\s(]/.test(texto[i + palabra.length] ?? '')) {
+      partes.push(texto.slice(inicio, i).trim());
+      inicio = i + palabra.length;
+      i = inicio - 1;
     }
   }
   partes.push(texto.slice(inicio).trim());
@@ -404,6 +417,10 @@ const SOLO_SESION = new Set([
   "auth.role()='authenticated'",
   "'authenticated'=auth.role()",
   "auth.role()in('authenticated')",
+  "auth.role()in'authenticated'",
+  'not(auth.uid()isnull)',
+  'notauth.uid()isnull',
+  "auth.jwt()->>'role'in'authenticated'",
   'auth.jwt()isnotnull',
   "auth.jwt()->>'role'='authenticated'",
   "auth.jwt()->>'sub'isnotnull",

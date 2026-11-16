@@ -6,9 +6,9 @@ import { GRAVEDADES, pesoGravedad } from './util.js';
 
 const T = {
   es: {
-    titulo: 'Informe de auditoría de seguridad',
+    titulo: 'Informe de comprobación de acceso a datos',
     para: 'Preparado para',
-    por: 'Auditoría realizada por',
+    por: 'Comprobación realizada por',
     fecha: 'Fecha',
     resumen: 'Resumen',
     hallazgos: 'Hallazgos',
@@ -62,9 +62,9 @@ const T = {
     pie: 'Generado con cerrojo',
   },
   en: {
-    titulo: 'Security audit report',
+    titulo: 'Data access check report',
     para: 'Prepared for',
-    por: 'Audit performed by',
+    por: 'Check performed by',
     fecha: 'Date',
     resumen: 'Summary',
     hallazgos: 'Findings',

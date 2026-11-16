@@ -241,6 +241,6 @@ test('CLI: flujo completo web → aislamiento → repo → informe', async () =>
   const informe = await ejecutar(['informe', join(dir, 'web.json'), join(dir, 'aislamiento.json'), join(dir, 'repo.json'), '--idioma', 'en', '--cliente', 'ACME', '--salida', join(dir, 'informe.html')]);
   assert.equal(informe.status, 0, informe.stderr);
   const html = readFileSync(join(dir, 'informe.html'), 'utf8');
-  assert.match(html, /Security audit report/);
+  assert.match(html, /Data access check report/);
   assert.match(html, /ACME/);
 });

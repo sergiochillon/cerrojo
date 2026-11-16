@@ -9,7 +9,7 @@ import { generarInforme, resumenTexto } from './informe.js';
 import { Cliente, esLoopback } from './http.js';
 import { GRAVEDADES, sinControl } from './util.js';
 
-const AYUDA = `cerrojo — auditoría de seguridad para apps hechas con IA sobre Supabase
+const AYUDA = `cerrojo — ¿pueden los usuarios de una app sobre Supabase ver datos de otros usuarios?
 
 Uso:
   cerrojo web <url> --autorizo [opciones]        Qué expone la app desplegada a un visitante sin sesión

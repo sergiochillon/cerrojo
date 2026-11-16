@@ -42,11 +42,14 @@ function repoCon(sql, archivos = {}) {
 }
 const ids = (r) => r.hallazgos.map((h) => `${h.id} ${h.donde}`);
 const tiene = (r, id, donde) => r.hallazgos.some((h) => h.id === id && (!donde || h.donde === donde));
+// En integración continua las máquinas son más lentas: lo que se comprueba es que el coste no
+// sea cuadrático (segundos frente a minutos), no una cifra exacta.
+const HOLGURA = process.env.CI ? 5 : 1;
 const rapido = (nombre, fn, maxMs = 2000) => {
   const t0 = performance.now();
   fn();
   const ms = performance.now() - t0;
-  assert.ok(ms < maxMs, `${nombre}: ${Math.round(ms)} ms (máximo ${maxMs})`);
+  assert.ok(ms < maxMs * HOLGURA, `${nombre}: ${Math.round(ms)} ms (máximo ${maxMs * HOLGURA})`);
 };
 const TABLA = 'create table public.t (id uuid, user_id uuid, nota text); alter table public.t enable row level security;';
 

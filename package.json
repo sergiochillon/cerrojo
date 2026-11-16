@@ -1,7 +1,7 @@
 {
   "name": "cerrojo",
   "version": "0.1.0",
-  "description": "Auditoría de seguridad para apps hechas con IA sobre Supabase: comprueba si el aislamiento entre usuarios funciona, no solo si RLS existe.",
+  "description": "Comprueba con dos cuentas de prueba si los usuarios de una app sobre Supabase pueden ver o cambiar datos de otros usuarios.",
   "type": "module",
   "license": "MIT",
   "private": true,

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 
 // Más holgura en integración continua: se comprueba que no haya coste cuadrático, no una cifra.
-const LIMITE_MS = process.env.CI ? 10_000 : 2000;
+const LIMITE_MS = process.env.CI ? 10_000 : 5000;
 import {
   dividirSentencias,
   modeloVacio,

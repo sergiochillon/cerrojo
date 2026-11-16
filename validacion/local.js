@@ -55,7 +55,9 @@ export function motivosLocales({ url, clave }) {
 }
 
 function ejecutar(orden, args, entrada) {
-  const r = spawnSync(orden, args, { input: entrada, encoding: 'utf8', maxBuffer: 20_000_000 });
+  // Docker local: se ignora cualquier variable que lo redirija a otra máquina.
+  const { DOCKER_HOST: _h, DOCKER_CONTEXT: _c, ...entorno } = process.env;
+  const r = spawnSync(orden, args, { input: entrada, encoding: 'utf8', maxBuffer: 20_000_000, env: entorno });
   return { ok: r.status === 0, salida: `${r.stdout ?? ''}`, error: `${r.stderr ?? ''}${r.error ? r.error.message : ''}` };
 }
 
@@ -112,7 +114,8 @@ async function principal() {
     decir('✔ Esquema de validación aplicado');
 
     // 3. Cuentas de prueba, con contraseñas que no salen de este proceso.
-    const cliente = new Cliente({ pausaMs: 50, permitirLocal: true, maxPeticiones: 150 });
+    // soloLoopback: ni por DNS ni por redirección saldrá de esta máquina.
+    const cliente = new Cliente({ pausaMs: 50, soloLoopback: true, maxPeticiones: 150 });
     const cuentas = {};
     for (const letra of ['a', 'b']) {
       const correo = `cerrojo-${letra}@example.test`;

@@ -95,7 +95,9 @@ const SUFIJOS_INTERNOS = ['.local', '.internal', '.intranet', '.lan', '.corp', '
 export function clasificarNombre(nombre) {
   const h = nombre.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   if (net.isIP(h)) return clasificarIp(h);
-  if (h === 'localhost' || h.endsWith('.localhost')) return 'loopback';
+  // Solo "localhost" a secas. Un nombre como x.localhost puede resolverse a cualquier sitio:
+  // se deja que lo decida la dirección a la que resuelva.
+  if (h === 'localhost') return 'loopback';
   if (!h.includes('.') || SUFIJOS_INTERNOS.some((s) => h.endsWith(s))) return 'privada';
   return null;
 }
@@ -117,7 +119,7 @@ export class Cliente {
   /**
    * @param {{
    *   pausaMs?: number, maxPeticiones?: number, timeoutMs?: number,
-   *   permitirLocal?: boolean,
+   *   permitirLocal?: boolean, soloLoopback?: boolean,
    *   resolver?: (nombre: string) => Promise<{address: string, family: number}[]>,
    *   fetch?: typeof fetch
    * }} [op]
@@ -130,6 +132,8 @@ export class Cliente {
     this.maxPeticiones = op.maxPeticiones ?? 200;
     this.timeoutMs = op.timeoutMs ?? 12000;
     this.permitirLocal = op.permitirLocal ?? false;
+    // Solo la propia máquina: ni siquiera direcciones públicas (para lo que escribe en local).
+    this.soloLoopback = op.soloLoopback ?? false;
     this.resolver = op.resolver ?? ((nombre) => resolverDns(nombre, { all: true }));
     this.fetch = op.fetch ?? null;
     this.hechas = 0;
@@ -145,6 +149,10 @@ export class Cliente {
     if (url.username || url.password) throw new DestinoBloqueado('URL con credenciales incrustadas');
     const nombre = url.hostname.replace(/^\[|\]$/g, '');
     const admitir = (clase, que) => {
+      if (this.soloLoopback) {
+        if (clase === 'loopback') return;
+        throw new DestinoBloqueado(`${que} no es la propia máquina (este cliente solo admite 127.0.0.1/localhost)`);
+      }
       if (clase === 'publica' || (clase === 'loopback' && this.permitirLocal)) return;
       throw new DestinoBloqueado(
         clase === 'loopback'

@@ -129,16 +129,22 @@ export async function auditarWeb(urlApp, op = {}) {
 
   // 2. Archivos que no deberían servirse. Una SPA responde 200 con su index.html a cualquier
   //    ruta, así que se exige que el contenido tenga el formato esperado.
+  let rutasSinRespuesta = 0;
+  const respondio = (r) => !r.error && r.estado > 0 && r.estado < 500;
   for (const ruta of ['/.env', '/.env.local', '/.env.production']) {
     const r = await red.pedir(origen + ruta, { maxBytes: 20000 });
+    if (!respondio(r)) rutasSinRespuesta++;
     const lineas = r.ok && !/<html|<!doctype/i.test(r.texto) ? r.texto.split('\n').filter((l) => /^[A-Z][A-Z0-9_]*=/.test(l.trim())).length : 0;
     if (lineas > 0) hallazgos.push(hallazgo('W-ENV-EXPUESTO', 'critica', ruta, { ruta, variables: lineas }));
   }
   {
     const r = await red.pedir(`${origen}/.git/config`, { maxBytes: 5000 });
+    if (!respondio(r)) rutasSinRespuesta++;
     if (r.ok && /^\s*\[core\]/m.test(r.texto)) hallazgos.push(hallazgo('W-GIT-EXPUESTO', 'alta', '/.git/config', { ruta: '/.git/config' }));
   }
-  if (!hallazgos.some((h) => h.id === 'W-ENV-EXPUESTO' || h.id === 'W-GIT-EXPUESTO')) {
+  if (rutasSinRespuesta) {
+    notas.push({ es: `No se pudo comprobar si se sirven .env o .git: ${rutasSinRespuesta} petición(es) sin respuesta clara del servidor.`, en: `Could not check whether .env or .git are served: ${rutasSinRespuesta} request(s) got no clear answer from the server.` });
+  } else if (!hallazgos.some((h) => h.id === 'W-ENV-EXPUESTO' || h.id === 'W-GIT-EXPUESTO')) {
     superadas.push({ es: 'Los archivos .env y la carpeta .git no se sirven públicamente.', en: '.env files and the .git folder are not publicly served.' });
   }
 
@@ -213,7 +219,9 @@ export async function auditarWeb(urlApp, op = {}) {
     }
 
     const esquema = await sb.esquema();
-    if (esquema) {
+    if (esquema?.error) {
+      notas.push({ es: 'No se pudo comprobar si el esquema de la base de datos es consultable con la clave pública (sin respuesta clara).', en: 'Could not check whether the database schema can be queried with the public key (no clear answer).' });
+    } else if (esquema) {
       hallazgos.push(hallazgo('S-ESQUEMA-PUBLICO', 'baja', `${supabaseUrl}/rest/v1/`, { tablas: esquema.tablas.length, funciones: esquema.funciones.length }));
       for (const t of esquema.tablas) tablas.add(t);
       for (const f of esquema.funciones) if (!superficie.rpc.includes(f)) superficie.rpc.push(f);

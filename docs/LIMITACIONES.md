@@ -70,8 +70,14 @@ No cubre, y un informe debe decirlo:
 - `aislamiento` identifica al dueño de una fila por una columna que contenga el id de usuario.
   Con modelos de organización o equipo (`org_id`, `team_id`) no reconoce a quién pertenece cada
   fila: lo marca como "sin columna de dueño" y hay que revisarlo a mano.
-- Se analizan como mucho 1.000 filas por cuenta y tabla. Una fuga que solo aparezca más allá
-  no se ve.
+- Se leen como mucho 1.000 filas por cuenta y tabla. Si una cuenta tiene más, se hace una
+  consulta aparte pidiendo solo filas cuyo dueño no sea ella; si esa consulta falla, la tabla
+  queda como "no concluyente". Las filas con la columna de dueño vacía no entran en esa
+  consulta.
+- "Acceso denegado" solo se afirma cuando lo dice la base de datos (código 42501). Un 401 o
+  403 de otro origen (un cortafuegos, un token caducado) se trata como "no se pudo comprobar".
+- La escritura solo se da por protegida si las dos cuentas tienen filas propias en la tabla y
+  ninguna consigue modificar las de la otra.
 - `repo` refleja lo que dicen las migraciones, no el estado real de la base. Lo que se cambió
   desde el panel de Supabase no está en el repositorio.
 

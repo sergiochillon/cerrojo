@@ -14,13 +14,14 @@
 //   los que actualizan updated_at o envían avisos), genera WAL y eventos de Realtime. Solo se
 //   permite contra una base local y desechable.
 
-import { Cliente, esLoopback } from './http.js';
+import { Cliente, esLoopback, clasificarIp } from './http.js';
 import { Supabase } from './supabase.js';
 import { hallazgo } from './catalogo.js';
 import { ahoraIso, categoriasSensibles, gravedadPorCategorias, pesoGravedad, RE_COLUMNA_DUENO, esIdentificador, esClaveSecreta, AVISO_CLAVE_SECRETA, sinControl } from './util.js';
 
 // Columnas de auditoría: que el id de una cuenta figure ahí no la hace partícipe de la fila.
-const RE_COLUMNA_AUDITORIA = /^(updated|modified|deleted|approved|reviewed|edited|last_[a-z_]+)_by(_id)?$/i;
+// (updated_by, verified_by, approved_by_id… Todas las "*_by" salvo created_by, que sí suele ser el dueño.)
+const RE_COLUMNA_AUDITORIA = /^(?!created_by(_id)?$).*_by(_id)?$/i;
 // Orden de preferencia al elegir la columna que identifica al dueño.
 const DUENO_PREFERIDO = ['user_id', 'owner_id', 'owner', 'uid', 'usuario_id', 'propietario_id', 'profile_id', 'account_id', 'author_id', 'created_by'];
 
@@ -48,6 +49,14 @@ export async function probarAislamiento(op) {
         'Solo está disponible contra una base local y desechable: Supabase en 127.0.0.1/localhost, ' +
         'con --permitir-local y --base-desechable. Contra un proyecto alojado no se ejecuta.',
     );
+  }
+  if (op.probarEscritura) {
+    // El nombre no basta: se comprueba a qué dirección resuelve. Así "localhost" redirigido
+    // en el DNS, o cualquier otro truco, no puede llevar un UPDATE fuera de esta máquina.
+    const destino = await cliente.validarDestino(new URL(op.supabaseUrl));
+    if (destino && clasificarIp(destino.address) !== 'loopback') {
+      throw new Error(`La prueba de escritura solo se ejecuta contra esta máquina, y ${new URL(op.supabaseUrl).hostname} resuelve a ${destino.address}.`);
+    }
   }
   let filasLeidas = 0;
   const inicio = ahoraIso();
@@ -96,6 +105,27 @@ export async function probarAislamiento(op) {
     const columnaDueno = detectarColumnaDueno(filas, columnas, sesiones);
     const fila = { tabla, columnaDueno, A: vistas.A.total ?? vistas.A.filas.length, B: vistas.B.total ?? vistas.B.filas.length, resultado: 'no_concluyente' };
 
+    // Si una cuenta tiene más filas de las que se han leído, las ajenas podrían estar más allá
+    // del tope. Se pregunta aparte por ellas: "filas cuyo dueño no soy yo".
+    let recortadaSinComprobar = false;
+    for (const quien of ['A', 'B']) {
+      const v = vistas[quien];
+      const recortada = v.filas.length >= limite || (v.total != null && v.total > v.filas.length);
+      if (!recortada) continue;
+      if (!columnaDueno) {
+        recortadaSinComprobar = true;
+        continue;
+      }
+      const resto = await sb.leer(tabla, { token: sesiones[quien].token, limite: Math.min(limite, 100), filtro: `${encodeURIComponent(columnaDueno)}=neq.${encodeURIComponent(sesiones[quien].id)}` });
+      if (resto.estado !== 'ok') {
+        recortadaSinComprobar = true;
+        continue;
+      }
+      filasLeidas += resto.filas.length;
+      const yaVistas = new Set(v.filas.map((f) => JSON.stringify(f)));
+      v.filas.push(...resto.filas.filter((f) => !yaVistas.has(JSON.stringify(f))));
+    }
+
     if (!filas.length) {
       fila.resultado = 'sin_datos';
     } else if (!columnaDueno) {
@@ -107,7 +137,7 @@ export async function probarAislamiento(op) {
       // Una fila "tiene que ver" con un usuario si su id figura en alguna columna que no sea
       // de auditoría. Así no se marca como fuga lo legítimo (un mensaje que B envió a A), pero
       // tampoco se oculta una fuga solo porque la cuenta aparezca en updated_by.
-      const columnasRelacion = columnas.filter((c) => !RE_COLUMNA_AUDITORIA.test(c));
+      const columnasRelacion = columnas.filter((c) => c === columnaDueno || !RE_COLUMNA_AUDITORIA.test(c));
       const relacionada = (f, id) => columnasRelacion.some((c) => f[c] === id);
       const lecturas = [];
       let compartidas = 0;
@@ -143,6 +173,16 @@ export async function probarAislamiento(op) {
       }
       if (fuga) {
         fila.resultado = 'fuga';
+      } else if (recortadaSinComprobar) {
+        // No se ha visto ninguna fila ajena, pero tampoco se han visto todas las filas.
+        fila.resultado = 'no_concluyente';
+        avisos.push({
+          es: `public.${tabla}: hay más filas de las ${limite} leídas y no se pudo comprobar el resto. Entre las leídas no hay filas ajenas, pero el resultado no es concluyente.`,
+          en: `public.${tabla}: there are more rows than the ${limite} read and the rest could not be checked. No foreign rows among those read, but the result is inconclusive.`,
+        });
+      } else if (sinDuenoVisibles) {
+        // Hay filas visibles que no se sabe de quién son: no se puede afirmar el aislamiento.
+        fila.resultado = 'no_concluyente';
       } else if (propias.A + propias.B > 0) {
         fila.resultado = 'aislada';
         superadas.push({
@@ -157,6 +197,12 @@ export async function probarAislamiento(op) {
         const escrituras = [];
         let sinRespuestaClara = false;
         for (const [quien, otro] of [['A', 'B'], ['B', 'A']]) {
+          // Sin filas de la otra cuenta no hay nada que intentar modificar: "cero filas
+          // actualizadas" no demostraría que la escritura esté protegida.
+          if (!propias[otro]) {
+            sinRespuestaClara = true;
+            continue;
+          }
           const r = await sb.actualizarSinCambios(tabla, columnaDueno, sesiones[otro].id, sesiones[quien].token);
           if (r.estado === 'ok' && r.filas > 0) escrituras.push({ quien, filas: r.filas });
           else if (r.estado === 'error') sinRespuestaClara = true;
@@ -233,5 +279,6 @@ export async function probarAislamiento(op) {
 function detectarColumnaDueno(filas, columnas, sesiones) {
   const ids = [sesiones.A.id, sesiones.B.id];
   const conCoincidencia = columnas.filter((c) => !RE_COLUMNA_AUDITORIA.test(c) && filas.some((f) => ids.includes(f[c])));
-  return DUENO_PREFERIDO.find((c) => conCoincidencia.includes(c)) ?? conCoincidencia.find((c) => RE_COLUMNA_DUENO.test(c)) ?? conCoincidencia[0] ?? null;
+  const preferida = DUENO_PREFERIDO.map((p) => conCoincidencia.find((c) => c.toLowerCase() === p)).find(Boolean);
+  return preferida ?? conCoincidencia.find((c) => RE_COLUMNA_DUENO.test(c)) ?? conCoincidencia[0] ?? null;
 }

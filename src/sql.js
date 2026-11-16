@@ -395,14 +395,16 @@ export function aplicarMigracion(modelo, sql, archivo) {
 export function normalizar(expr) {
   if (expr == null) return null;
   if (expr.length > MAX_EXPRESION) return expr.toLowerCase();
-  let e = expr.toLowerCase().replace(/\s+/g, '');
+  // "(select …)" se marca antes de quitar los espacios, para no confundir la palabra SELECT con
+  // el principio de un nombre de columna (select1 = 1).
+  let e = expr.toLowerCase().replace(/\(\s*select\s+/g, '(\u0001').replace(/\s+/g, '');
   let previa;
   let vueltas = 0;
   do {
     previa = e;
     e = e
       .replace(/::[a-z_]+(\[\])?/g, '') // (true)::boolean → (true)
-      .replace(/\(select([^()]*(?:\(\))?[^()]*)\)/g, '$1') // (select auth.uid()) → auth.uid()
+      .replace(/\(\u0001([^()\u0001]*(?:\(\))?[^()\u0001]*)\)/g, '$1') // (select auth.uid()) → auth.uid()
       .replace(/\(([a-z_.]+\(\)(?:->>?'[a-z_]+')?)\)/g, '$1') // (auth.jwt()->>'role') → auth.jwt()->>'role'
       .replace(/\((true|false|null|'[^']*'|\d+)\)/g, '$1'); // (true) → true
     while (e.startsWith('(') && entreParentesis(e, 0)?.fin === e.length) e = e.slice(1, -1);
@@ -454,7 +456,8 @@ export function clasificarCondicion(expr, profundidad = 0) {
     if (clases.includes('cierta')) return 'cierta';
     if (clases.includes('sesion') && clases.every((c) => c === 'sesion' || c === 'falsa')) return 'sesion';
     if (clases.every((c) => c === 'falsa')) return 'falsa';
-    return clases.includes('sesion') ? 'sesion-o-mas' : 'otra';
+    // Basta una rama que deje pasar a cualquier usuario registrado, aunque esté anidada.
+    return clases.some((c) => c === 'sesion' || c === 'sesion-o-mas') ? 'sesion-o-mas' : 'otra';
   }
   const conjuntos = partirExterior(texto, 'and');
   if (conjuntos.length > 1) {
@@ -462,6 +465,7 @@ export function clasificarCondicion(expr, profundidad = 0) {
     if (clases.includes('falsa')) return 'falsa';
     if (clases.every((c) => c === 'cierta')) return 'cierta';
     if (clases.every((c) => c === 'cierta' || c === 'sesion')) return 'sesion';
+    if (clases.every((c) => c === 'cierta' || c === 'sesion' || c === 'sesion-o-mas')) return 'sesion-o-mas';
     return 'otra';
   }
   return 'otra';

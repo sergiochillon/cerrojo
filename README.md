@@ -8,7 +8,7 @@ sesión con dos cuentas de prueba y compara lo que recibe cada una. Genera un in
 arreglo de cada hallazgo.
 
 > **Estado: primera versión, sin validar contra un Supabase real.** Funciona de principio a
-> fin contra la app ficticia incluida y tiene 107 pruebas automáticas, pero hasta ahora solo
+> fin contra la app ficticia incluida y tiene 121 pruebas automáticas, pero hasta ahora solo
 > ha hablado con una emulación local de la API de Supabase, y no se ha usado con ningún
 > cliente. La validación pendiente está preparada en
 > [validacion/LOCAL.md](validacion/LOCAL.md). Antes de fiarte de un resultado, lee
@@ -154,7 +154,7 @@ prueba creadas para la ocasión y baja `--limite`.
 npm test
 ```
 
-107 pruebas: lectura de SQL y evaluación de políticas, extracción desde código público,
+121 pruebas: lectura de SQL y evaluación de políticas, extracción desde código público,
 integración contra la app ficticia (vulnerable y con los arreglos aplicados), falsos positivos
 y falsos negativos conocidos, privacidad de los resultados, las salvaguardas de arriba,
 entradas hostiles y el ensayo en local del guion de validación.

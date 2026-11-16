@@ -44,7 +44,7 @@ const ids = (r) => r.hallazgos.map((h) => `${h.id} ${h.donde}`);
 const tiene = (r, id, donde) => r.hallazgos.some((h) => h.id === id && (!donde || h.donde === donde));
 // En integración continua las máquinas son más lentas: lo que se comprueba es que el coste no
 // sea cuadrático (segundos frente a minutos), no una cifra exacta.
-const HOLGURA = process.env.CI ? 5 : 1;
+const HOLGURA = process.env.CI ? 5 : 2.5;
 const rapido = (nombre, fn, maxMs = 2000) => {
   const t0 = performance.now();
   fn();

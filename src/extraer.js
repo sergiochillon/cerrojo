@@ -12,7 +12,8 @@ const RE_FICHA = /[A-Za-z0-9_.-]{16,}/g;
 const MAX_FICHA = 8192; // una clave real es corta; una ficha enorme es un recurso incrustado
 const RE_JWT = /eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
 const RE_URL_SUPABASE = /https:\/\/[a-z0-9]{20}\.supabase\.co/g;
-const RE_CREAR_CLIENTE = /createClient\(\s{0,20}["'`](https?:\/\/[^"'`\s]{1,300})["'`]\s{0,20},\s{0,20}["'`]([^"'`\s]{1,600})["'`]/g;
+// Con la bandera "y" se aplica en una posición concreta del texto, sin copiar trozos.
+const RE_CREAR_CLIENTE = /createClient\(\s{0,20}["'`](https?:\/\/[^"'`\s]{1,300})["'`]\s{0,20},\s{0,20}["'`]([^"'`\s]{1,600})["'`]/y;
 
 // Secretos de terceros con formato reconocible. Se buscan dentro de cada ficha.
 const PATRONES_SECRETO = [
@@ -55,9 +56,9 @@ export function extraer(texto, archivo) {
 
   for (const m of texto.matchAll(RE_URL_SUPABASE)) r.urlsSupabase.add(m[0]);
   for (const i of apariciones(texto, 'createClient(')) {
-    RE_CREAR_CLIENTE.lastIndex = 0;
-    const m = RE_CREAR_CLIENTE.exec(texto.slice(i, i + 1100));
-    if (m?.index === 0) r.urlsSupabase.add(m[1].replace(/\/+$/, ''));
+    RE_CREAR_CLIENTE.lastIndex = i;
+    const m = RE_CREAR_CLIENTE.exec(texto);
+    if (m) r.urlsSupabase.add(m[1].replace(/\/+$/, ''));
   }
 
   // Claves y secretos: solo dentro de fichas de tamaño razonable.

@@ -61,9 +61,18 @@ export function auditarRepo(dir) {
   // ───────────── 1. Migraciones SQL ─────────────
   const sqls = archivos.filter((a) => /\.sql$/i.test(a.rel)).sort((a, b) => a.rel.localeCompare(b.rel));
   const modelo = modeloVacio();
+  const sqlNoLeidos = [];
   for (const a of sqls) {
     const texto = leer(a.ruta, 5_000_000);
     if (texto != null) aplicarMigracion(modelo, texto, a.rel);
+    else sqlNoLeidos.push(a.rel);
+  }
+  if (sqlNoLeidos.length) {
+    // Un archivo que no se lee puede contener justo la política que importa.
+    avisos.push({
+      es: `No se analizaron ${sqlNoLeidos.length} archivo(s) SQL (más de 5 MB o ilegibles): ${sqlNoLeidos.slice(0, 5).join(', ')}. Lo que definan no está en este informe.`,
+      en: `${sqlNoLeidos.length} SQL file(s) were not analysed (over 5 MB or unreadable): ${sqlNoLeidos.slice(0, 5).join(', ')}. Whatever they define is not in this report.`,
+    });
   }
 
   const inventario = [];
@@ -134,14 +143,20 @@ export function auditarRepo(dir) {
 
     if (enPublic) {
       const privilegio = t.columnas.filter((c) => RE_COLUMNA_PRIVILEGIO.test(c));
-      const modifica = t.politicas.find((p) => !p.restrictiva && (p.comando === 'update' || p.comando === 'all'));
-      const checkMencionaColumna = modifica && privilegio.some((c) => new RegExp(`\\b${c.replace(/[^A-Za-z0-9_]/g, '')}\\b`, 'i').test(modifica.check ?? ''));
-      // Solo cuenta como protección haber retirado UPDATE a los usuarios y no haberlo devuelto
-      // sobre esas columnas. Un trigger cualquiera (p. ej. el de updated_at) no protege nada.
-      const protegidas = t.updateRevocado && !privilegio.some((c) => (t.updateColumnas ?? []).includes(c));
-      if (privilegio.length && modifica && !protegidas && !checkMencionaColumna) {
+      const modifican = t.politicas.filter((p) => !p.restrictiva && (p.comando === 'update' || p.comando === 'all'));
+      const concedidas = (t.updateColumnas ?? []).map((c) => c.toLowerCase());
+      // Una columna de privilegio queda protegida solo si:
+      //   · se retiró UPDATE a los usuarios y no se devolvió sobre ella, o
+      //   · TODAS las políticas que permiten modificar la vigilan en su WITH CHECK.
+      // Un trigger cualquiera (p. ej. el de updated_at) no protege nada.
+      const expuestas = privilegio.filter((c) => {
+        if (t.updateRevocado && !concedidas.includes(c.toLowerCase())) return false;
+        const re = new RegExp(`\\b${c.replace(/[^A-Za-z0-9_]/g, '')}\\b`, 'i');
+        return !modifican.every((p) => re.test(p.check ?? ''));
+      });
+      if (expuestas.length && modifican.length) {
         const otros = t.disparadoresUpdate.filter((d) => !/updated|modtime|moddatetime|timestamp|touch/i.test(`${d.nombre} ${d.funcion}`)).map((d) => d.nombre);
-        hallazgos.push(hallazgo('R-COLUMNA-PRIVILEGIO-EDITABLE', otros.length ? 'media' : 'alta', t.nombre, { tabla: nombre, columnas: privilegio, politica: modifica.nombre, disparadores: otros }));
+        hallazgos.push(hallazgo('R-COLUMNA-PRIVILEGIO-EDITABLE', otros.length ? 'media' : 'alta', t.nombre, { tabla: nombre, columnas: expuestas, politica: modifican.map((p) => p.nombre).join('", "'), disparadores: otros }));
       }
     }
   }
@@ -181,7 +196,10 @@ export function auditarRepo(dir) {
 
   // ───────────── 2. Código y configuración ─────────────
   const gitignore = leer(join(dir, '.gitignore')) ?? '';
-  const envIgnorado = /^\s*\/?\.env(\*|\..*)?\s*$/m.test(gitignore);
+  // ¿Está este archivo de entorno en .gitignore? Se mira archivo por archivo: que se ignore
+  // ".env.local" no significa que se ignore ".env".
+  const patronesIgnorados = gitignore.split('\n').map((l) => l.trim().replace(/^\//, '')).filter((l) => l && !l.startsWith('#'));
+  const envIgnorado = (nombre) => patronesIgnorados.some((p) => p === nombre || p === '.env*' || p === '*.env' || (p === '.env.*' && nombre.startsWith('.env.')) || (p === '.env' && nombre === '.env'));
   const variablesVistas = new Set();
   let secretosEnCodigo = 0;
 
@@ -194,11 +212,11 @@ export function auditarRepo(dir) {
     const texto = leer(a.ruta);
     if (texto == null) continue;
 
-    if (esEnv && envIgnorado) continue; // no forma parte del repositorio
+    if (esEnv && envIgnorado(nombre)) continue; // no forma parte del repositorio
     if (esEnv) {
       const lineas = texto.split('\n').filter((l) => /^\s*[A-Z][A-Z0-9_]*\s*=\s*\S/.test(l));
       const privadas = lineas.filter((l) => !/^\s*(VITE|NEXT_PUBLIC|REACT_APP|PUBLIC|EXPO_PUBLIC|NUXT_PUBLIC)_/.test(l));
-      if (lineas.length && !envIgnorado) {
+      if (lineas.length) {
         hallazgos.push(hallazgo('C-ENV-EN-GIT', privadas.length ? 'alta' : 'baja', a.rel, { archivo: a.rel, variables: lineas.length, ignorado: false }));
       }
     }

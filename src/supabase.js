@@ -61,6 +61,8 @@ export class Supabase {
   /** Especificación OpenAPI en la raíz de PostgREST (retirada para claves públicas en 2026). */
   async esquema() {
     const r = await this.c.pedir(`${this.url}/rest/v1/`, { cabeceras: this.cabeceras() });
+    // Sin respuesta clara (error de red, 5xx, respuesta cortada) no se sabe si es accesible.
+    if (r.error || r.estado >= 500 || r.truncada) return { error: true };
     const doc = r.ok ? json(r.texto) : null;
     if (!doc || typeof doc !== 'object') return null;
     const tablas = Object.keys(doc.definitions ?? doc.components?.schemas ?? {}).filter(esIdentificador);
@@ -111,8 +113,7 @@ export class Supabase {
     });
     const filas = json(r.texto);
     if (r.ok && Array.isArray(filas) && !r.truncada) return { estado: 'ok', filas: filas.length };
-    const denegado = r.estado === 401 || r.estado === 403 || filas?.code === '42501';
-    return { estado: denegado ? 'denegado' : 'error', filas: 0, http: r.estado };
+    return { estado: filas?.code === '42501' ? 'denegado' : 'error', filas: 0, http: r.estado };
   }
 }
 
@@ -130,8 +131,9 @@ function interpretarLectura(r) {
   const codigo = cuerpo?.code ?? '';
   const mensaje = cuerpo?.message ?? r.error ?? '';
   if (r.estado === 404 || codigo === 'PGRST205' || codigo === '42P01') return { estado: 'no_existe', filas: [], total: null, http: r.estado, mensaje };
+  // "Denegado" solo cuando lo dice la base de datos (42501, permiso insuficiente). Un 401/403
+  // sin ese código puede venir de un cortafuegos o de un token caducado: no prueba nada.
   if (codigo === '42501') return { estado: 'denegado', filas: [], total: null, http: r.estado, mensaje };
   if (r.estado === 401 && /api key|apikey|jwt/i.test(mensaje)) return { estado: 'clave_invalida', filas: [], total: null, http: r.estado, mensaje };
-  if (r.estado === 401 || r.estado === 403) return { estado: 'denegado', filas: [], total: null, http: r.estado, mensaje };
   return { estado: 'error', filas: [], total: null, http: r.estado, mensaje };
 }

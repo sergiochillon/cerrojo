@@ -64,7 +64,7 @@
 
   <section>
     <h2>Alcance: qué se ha comprobado</h2>
-    <div class="tabla-ancha"><table><tbody><tr><td>Aplicación desplegada (sin sesión)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-16 07:27 UTC · 22 peticiones HTTP</td></tr><tr><td>Aislamiento entre usuarios (con dos cuentas de prueba)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-16 07:27 UTC · 26 peticiones HTTP</td></tr><tr><td>Repositorio (migraciones SQL y código)</td><td><code>app-vulnerable</code></td><td>2026-11-16 07:27 UTC</td></tr></tbody></table></div>
+    <div class="tabla-ancha"><table><tbody><tr><td>Aplicación desplegada (sin sesión)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-16 07:47 UTC · 22 peticiones HTTP</td></tr><tr><td>Aislamiento entre usuarios (con dos cuentas de prueba)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-16 07:47 UTC · 26 peticiones HTTP</td></tr><tr><td>Repositorio (migraciones SQL y código)</td><td><code>app-vulnerable</code></td><td>2026-11-16 07:47 UTC</td></tr></tbody></table></div>
     <p style="margin-top:10px"><b>Autorización:</b> Quien ejecutó la herramienta declaró ser titular de la aplicación o contar con autorización escrita de su titular.</p>
   </section>
 
@@ -138,7 +138,7 @@ Si la tabla debe ser pública, expón solo las columnas necesarias mediante una 
       <header><span class="etq">Crítica</span><h3>7. Secreto de un servicio externo publicado en el navegador</h3></header>
       <dl>
         <dt>Dónde</dt><dd><code>/assets/index-4f3a9c.js</code></dd>
-        <dt>Qué se ha observado</dt><dd>Clave de API de OpenAI en /assets/index-4f3a9c.js: sk-pro…_-9e (48 caracteres)</dd>
+        <dt>Qué se ha observado</dt><dd>Clave de API de OpenAI en /assets/index-4f3a9c.js: sk-pro…A6hb (48 caracteres)</dd>
         <dt>Por qué importa</dt><dd>Una clave secreta en el código del navegador es pública. Puede usarse a tu costa (consumo de API, cobros) o para acceder a datos de ese servicio.</dd>
         <dt>Cómo arreglarlo</dt><dd><pre>Revoca la clave en el panel del proveedor y crea otra. Mueve la llamada a una Edge Function o a tu servidor y guarda la clave como secreto de servidor.</pre></dd>
       </dl>

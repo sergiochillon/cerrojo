@@ -125,7 +125,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 function rellenar(texto, datos) {
   return texto.replace(/\{(tabla|columna|politica|comando)\}/g, (todo, k) => {
     const v = datos?.[k];
-    return v == null || v === 'all' ? (k === 'comando' ? 'select' : `<${k}>`) : String(v);
+    return v == null || (k === 'comando' && v === 'all') ? (k === 'comando' ? 'select' : `<${k}>`) : String(v);
   });
 }
 

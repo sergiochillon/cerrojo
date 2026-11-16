@@ -8,7 +8,7 @@ test accounts and compares what each one receives. It produces a report with a f
 finding.
 
 > **Status: first version, not yet validated against a real Supabase project.** It works end
-> to end against the bundled demo app and has 107 automated tests, but so far it has only
+> to end against the bundled demo app and has 121 automated tests, but so far it has only
 > talked to a local emulation of the Supabase API, and it has not been used with any client.
 > Read [docs/LIMITACIONES.md](docs/LIMITACIONES.md) (Spanish) before trusting a result.
 

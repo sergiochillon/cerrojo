@@ -64,7 +64,7 @@
 
   <section>
     <h2>Scope: what was checked</h2>
-    <div class="tabla-ancha"><table><tbody><tr><td>Deployed application (no session)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-16 07:27 UTC · 22 HTTP requests</td></tr><tr><td>User isolation (two test accounts)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-16 07:27 UTC · 26 HTTP requests</td></tr><tr><td>Repository (SQL migrations and code)</td><td><code>app-vulnerable</code></td><td>2026-11-16 07:27 UTC</td></tr></tbody></table></div>
+    <div class="tabla-ancha"><table><tbody><tr><td>Deployed application (no session)</td><td><code>http://127.0.0.1:54321/</code></td><td>2026-11-16 07:47 UTC · 22 HTTP requests</td></tr><tr><td>User isolation (two test accounts)</td><td><code>http://127.0.0.1:54321</code></td><td>2026-11-16 07:47 UTC · 26 HTTP requests</td></tr><tr><td>Repository (SQL migrations and code)</td><td><code>app-vulnerable</code></td><td>2026-11-16 07:47 UTC</td></tr></tbody></table></div>
     <p style="margin-top:10px"><b>Authorization:</b> The person running the tool declared they own the application or hold written authorization from its owner.</p>
   </section>
 
@@ -138,7 +138,7 @@ If the table must be public, expose only the needed columns through a view.</pre
       <header><span class="etq">Critical</span><h3>7. Third-party secret shipped to the browser</h3></header>
       <dl>
         <dt>Where</dt><dd><code>/assets/index-4f3a9c.js</code></dd>
-        <dt>What was observed</dt><dd>Clave de API de OpenAI in /assets/index-4f3a9c.js: sk-pro…_-9e (48 caracteres)</dd>
+        <dt>What was observed</dt><dd>Clave de API de OpenAI in /assets/index-4f3a9c.js: sk-pro…A6hb (48 caracteres)</dd>
         <dt>Why it matters</dt><dd>A secret key in browser code is public. It can be used at your expense (API usage, charges) or to access data in that service.</dd>
         <dt>How to fix it</dt><dd><pre>Revoke the key in the provider dashboard and create a new one. Move the call to an Edge Function or your server and store the key as a server secret.</pre></dd>
       </dl>

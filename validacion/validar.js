@@ -86,7 +86,8 @@ export class Registrador {
   async pedir(url, op = {}) {
     const r = await this.cliente.pedir(url, op);
     const u = new URL(url);
-    const apunte = { metodo: op.metodo ?? 'GET', ruta: u.pathname + u.search, estado: r.estado };
+    // La ruta puede llevar el identificador de una cuenta en un filtro: se enmascara.
+    const apunte = { metodo: op.metodo ?? 'GET', ruta: limpiarMensaje(decodeURIComponent(u.pathname + u.search)), estado: r.estado };
     if (r.error) apunte.error = r.error;
     const rango = r.cabeceras?.get('content-range');
     if (rango) apunte.contentRange = rango;
@@ -118,6 +119,7 @@ export class Registrador {
  */
 export function limpiarMensaje(texto) {
   return String(texto)
+    .slice(0, 2000) // se acota antes de aplicar expresiones regulares
     .replace(/eyJ[A-Za-z0-9_-]{6,}(\.[A-Za-z0-9_-]+){0,2}/g, '[token]')
     .replace(/\bsb_(publishable|secret)_[A-Za-z0-9_-]+/g, '[clave]')
     .replace(/[^\s@"']+@[^\s@"']+\.[^\s@"']+/g, '[correo]')

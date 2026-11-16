@@ -188,14 +188,15 @@ export async function iniciarDemo(op = {}) {
     const existe = esId(tabla) && (await db.query("select 1 from information_schema.tables where table_schema = 'public' and table_name = $1", [tabla])).rows.length;
     if (!existe) return enviar(res, 404, { code: 'PGRST205', message: `Could not find the table 'public.${tabla}' in the schema cache` });
 
-    // Filtros del tipo columna=eq.valor
+    // Filtros del tipo columna=eq.valor y columna=neq.valor
     const filtros = [];
     for (const [k, v] of u.searchParams) {
       if (['select', 'limit', 'offset', 'order'].includes(k)) continue;
-      if (!esId(k) || !v.startsWith('eq.')) return enviar(res, 400, { code: 'PGRST100', message: 'Filtro no soportado por la demo' });
-      filtros.push([k, v.slice(3)]);
+      const m = v.match(/^(eq|neq)\.(.*)$/s);
+      if (!esId(k) || !m) return enviar(res, 400, { code: 'PGRST100', message: 'Filtro no soportado por la demo' });
+      filtros.push([k, m[2], m[1] === 'eq' ? '=' : '<>']);
     }
-    const donde = filtros.length ? ` where ${filtros.map(([k], i) => `${idSql(k)}::text = $${i + 1}`).join(' and ')}` : '';
+    const donde = filtros.length ? ` where ${filtros.map(([k, , operador], i) => `${idSql(k)}::text ${operador} $${i + 1}`).join(' and ')}` : '';
     const valores = filtros.map(([, v]) => v);
     const limite = Math.min(Number(u.searchParams.get('limit') ?? 1000) || 1000, 1000);
 

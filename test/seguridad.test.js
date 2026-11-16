@@ -96,7 +96,9 @@ test('destinos: clasificación de direcciones IPv4 e IPv6', () => {
 
 test('destinos: clasificación por nombre y formas alternativas de escribir una IP', () => {
   assert.equal(clasificarNombre('localhost'), 'loopback');
-  assert.equal(clasificarNombre('app.localhost'), 'loopback');
+  // Un nombre bajo .localhost puede resolverse a cualquier sitio: lo decide su dirección.
+  assert.equal(clasificarNombre('app.localhost'), null);
+  assert.equal(esLoopback('http://app.localhost:54321/'), false);
   assert.equal(clasificarNombre('LOCALHOST.'), 'loopback');
   for (const n of ['intranet', 'nas.local', 'db.internal', 'router.lan', 'metadata.google.internal']) assert.equal(clasificarNombre(n), 'privada', n);
   assert.equal(clasificarNombre('example.com'), null);

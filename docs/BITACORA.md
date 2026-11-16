@@ -25,11 +25,17 @@ pruebas por sí mismo: las ejecuté yo.
 | Pruebas adversarias | Gemini 4 Hydrogen (High) | 14 pruebas redactadas como texto. Al ejecutarlas, tres fallaban y una dejaba colgado el proceso: destaparon los problemas de rendimiento y dos huecos de IPv6. Integradas en `test/adversario.test.js`. |
 | Pruebas adversarias (primer intento) | Claude Sonnet 5.5 (High) | Sin resultado: necesitaba permiso para ejecutar órdenes. |
 | Coherencia documentación–código | GPT-OSS 120B / Gemini 3.8 Flash | Sin resultado útil: uno devolvió solo un plan y el otro agotó el tiempo. La comprobación de enlaces y opciones se hizo con un script. |
-| Segunda auditoría del código corregido | Gemini 4 Hydrogen (XHigh) | Ver más abajo. |
+| Segunda auditoría del código corregido | Gemini 4 Hydrogen (XHigh) | 10 hallazgos más, la mayoría del mismo tipo: algo no comprobado que aún podía figurar como superado (un 403 de un cortafuegos tomado por "denegado", tablas con más filas de las leídas, escritura dada por protegida sin filas que modificar). Corregidos, con pruebas en `test/auditoria2.test.js`. |
 
 Cuota al empezar el 16-nov: modelos Gemini 99 % semanal, Claude/GPT 100 %, Gemini 4 Argon 94 %.
 Cuota tras las tareas principales: 97 %, 98 % y 82 %. **No se ha agotado ninguna cuota** ni se
 ha usado nada de pago.
+
+Que dos auditorías seguidas encontraran fallos reales es la mejor razón para no dar el código
+por bueno: lo más probable es que una tercera encontrara más.
+
+La integración continua también destapó un fallo que en esta máquina no se veía: el script de
+pruebas no funcionaba en Node 20. Corregido; ahora pasa en Node 20, 22 y 24 sobre Linux.
 
 Un consejo de la crítica comercial **no** se siguió: no decir al cliente que la prueba descarga
 filas de su base de datos. Se resolvió de otra forma (trabajar sobre una réplica local) y se

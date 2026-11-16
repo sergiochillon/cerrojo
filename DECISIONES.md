@@ -10,7 +10,7 @@ Para retomar el trabajo. El detalle de cada sesión está en [docs/BITACORA.md](
 - [x] App ficticia vulnerable con PostgreSQL real (PGlite) y demo reproducible (`npm run demo`).
 - [x] Salvaguardas de red y de datos, revisadas dos veces.
 - [x] Auditoría crítica del código con Antigravity y hallazgos corregidos.
-- [x] 107 pruebas automáticas en verde (`npm test`).
+- [x] 121 pruebas automáticas en verde (`npm test`).
 - [x] Documentación: README (ES/EN), límites, guía de revisión, réplica local, autorización.
 - [x] Oferta replanteada, precio como hipótesis y textos para Fiverr y Upwork.
 - [x] Guiones de validación: Supabase local (`validacion/LOCAL.md`) y proyecto alojado
@@ -25,7 +25,7 @@ Qué se ha publicado y qué no: [docs/LANZAMIENTO.md](docs/LANZAMIENTO.md).
 ## Cómo ejecutarlo
 
     npm install
-    npm test           # 107 pruebas
+    npm test           # 121 pruebas
     npm run demo       # audita la app ficticia y genera salida/demo-informe.html
     node bin/cerrojo.js ayuda
 
